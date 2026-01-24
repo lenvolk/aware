@@ -1,5 +1,5 @@
 /**
- * Status bar manager for Focus Time extension
+ * Status bar manager for Aware extension
  */
 
 import * as vscode from 'vscode';
@@ -16,13 +16,13 @@ export class StatusBarManager {
         this.meetingService = meetingService;
         
         this.statusBarItem = vscode.window.createStatusBarItem(
-            'focusTime.status',
+            'aware.status',
             vscode.StatusBarAlignment.Right,
             100
         );
         
-        this.statusBarItem.command = 'focusTime.showMeetings';
-        this.statusBarItem.name = 'Focus Time';
+        this.statusBarItem.command = 'aware.showMeetings';
+        this.statusBarItem.name = 'Aware';
         
         // Subscribe to events
         this.meetingService.onMeetingsUpdated(() => this.update());
@@ -76,7 +76,7 @@ export class StatusBarManager {
             `Click to view all meetings`
         );
         this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
-        this.statusBarItem.command = 'focusTime.showMeetings';
+        this.statusBarItem.command = 'aware.showMeetings';
     }
 
     private showNextMeeting(meeting: Meeting): void {
@@ -107,7 +107,7 @@ export class StatusBarManager {
             this.statusBarItem.backgroundColor = undefined;
         }
         
-        this.statusBarItem.command = 'focusTime.showMeetings';
+        this.statusBarItem.command = 'aware.showMeetings';
     }
 
     private showDefault(): void {
@@ -117,7 +117,7 @@ export class StatusBarManager {
             `Click to view meetings`
         );
         this.statusBarItem.backgroundColor = undefined;
-        this.statusBarItem.command = 'focusTime.showMeetings';
+        this.statusBarItem.command = 'aware.showMeetings';
     }
 
     private formatTime(date: Date): string {

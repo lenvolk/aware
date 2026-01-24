@@ -1,6 +1,6 @@
-# Focus Time
+# Aware
 
-AI-powered focus time manager for VS Code that integrates with Microsoft 365 to track your meetings and help you stay focused.
+AI-powered awareness manager for VS Code that integrates with Microsoft 365 to track your meetings and help you stay focused.
 
 ## Prerequisites
 
@@ -54,18 +54,18 @@ npx @microsoft/workiq accept-eula
 - **Cross-Platform DND**: Supports Windows Focus Assist, macOS Do Not Disturb, and GNOME notifications
 
 ### Copilot Integration
-- **@focus Chat Participant**: Chat with `@focus` to manage your meetings and focus time
+- **@aware Chat Participant**: Chat with `@aware` to manage your meetings and focus time
   - `/meetings` - Show your upcoming meetings
   - `/focus` - Start a focus session
   - `/status` - Check your current focus status
   - `/next` - See when your next meeting is
 
 - **Language Model Tools**: Copilot can use these tools to help you:
-  - `focusTime_getMeetings` - Get upcoming meetings
-  - `focusTime_getNextMeeting` - Get next meeting details
-  - `focusTime_startFocus` - Start a focus session
-  - `focusTime_stopFocus` - Stop focus session
-  - `focusTime_getFocusStatus` - Check focus status
+  - `aware_getMeetings` - Get upcoming meetings
+  - `aware_getNextMeeting` - Get next meeting details
+  - `aware_startFocus` - Start a focus session
+  - `aware_stopFocus` - Stop focus session
+  - `aware_getFocusStatus` - Check focus status
 
 ### Sidebar Views
 - **Upcoming Meetings**: See all your meetings in a dedicated sidebar view
@@ -87,25 +87,25 @@ This extension contributes the following settings:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `focusTime.meetingReminderMinutes` | `10` | Minutes before a meeting to show a reminder notification |
-| `focusTime.autoEnableDoNotDisturb` | `true` | Automatically enable Do Not Disturb when a meeting ends |
-| `focusTime.refreshIntervalMinutes` | `5` | How often to refresh the meeting list from your calendar |
-| `focusTime.showStatusBar` | `true` | Show Focus Time status in the status bar |
-| `focusTime.enableNotifications` | `true` | Enable meeting reminder notifications |
-| `focusTime.workingHoursStart` | `09:00` | Start of working hours (HH:MM format) |
-| `focusTime.workingHoursEnd` | `17:00` | End of working hours (HH:MM format) |
+| `aware.meetingReminderMinutes` | `10` | Minutes before a meeting to show a reminder notification |
+| `aware.autoEnableDoNotDisturb` | `true` | Automatically enable Do Not Disturb when a meeting ends |
+| `aware.refreshIntervalMinutes` | `5` | How often to refresh the meeting list from your calendar |
+| `aware.showStatusBar` | `true` | Show Aware status in the status bar |
+| `aware.enableNotifications` | `true` | Enable meeting reminder notifications |
+| `aware.workingHoursStart` | `09:00` | Start of working hours (HH:MM format) |
+| `aware.workingHoursEnd` | `17:00` | End of working hours (HH:MM format) |
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `Focus Time: Show Upcoming Meetings` | Display your upcoming meetings |
-| `Focus Time: Refresh Meetings` | Refresh the meeting list from your calendar |
-| `Focus Time: Toggle Do Not Disturb` | Toggle Do Not Disturb mode |
-| `Focus Time: Start Focus Session` | Start a new focus session |
-| `Focus Time: Stop Focus Session` | Stop the current focus session |
-| `Focus Time: Join Meeting` | Join the current or next online meeting |
-| `Focus Time: Open Settings` | Open Focus Time settings |
+| `Aware: Show Upcoming Meetings` | Display your upcoming meetings |
+| `Aware: Refresh Meetings` | Refresh the meeting list from your calendar |
+| `Aware: Toggle Do Not Disturb` | Toggle Do Not Disturb mode |
+| `Aware: Start Focus Session` | Start a new focus session |
+| `Aware: Stop Focus Session` | Stop the current focus session |
+| `Aware: Join Meeting` | Join the current or next online meeting |
+| `Aware: Open Settings` | Open Aware settings |
 
 ## How It Works
 
@@ -117,7 +117,7 @@ This extension contributes the following settings:
 
 4. **Focus Mode Activation**: When a meeting ends, the extension automatically enables Do Not Disturb on your system, allowing you to focus without interruptions.
 
-5. **Copilot Integration**: Use `@focus` in Copilot Chat to interact with your calendar and focus sessions using natural language.
+5. **Copilot Integration**: Use `@aware` in Copilot Chat to interact with your calendar and focus sessions using natural language.
 
 ## Platform Support
 
@@ -151,7 +151,7 @@ This extension contributes the following settings:
 - Initial release
 - Meeting tracking and reminders
 - Focus session management
-- @focus chat participant
+- @aware chat participant
 - Language model tools for Copilot
 - Cross-platform Do Not Disturb support
 

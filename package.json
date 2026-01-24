@@ -1,17 +1,17 @@
 {
-  "name": "focus-time",
-  "displayName": "Focus Time",
-  "description": "AI-powered focus time manager that tracks your M365 meetings and helps you stay focused",
+  "name": "aware",
+  "displayName": "Aware",
+  "description": "AI-powered awareness manager that tracks your M365 meetings and helps you stay focused",
   "version": "0.0.1",
   "publisher": "burkeholland",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/burkeholland/focus-time"
+    "url": "https://github.com/burkeholland/aware"
   },
-  "homepage": "https://github.com/burkeholland/focus-time#readme",
+  "homepage": "https://github.com/burkeholland/aware#readme",
   "bugs": {
-    "url": "https://github.com/burkeholland/focus-time/issues"
+    "url": "https://github.com/burkeholland/aware/issues"
   },
   "icon": "resources/icon.png",
   "engines": {
@@ -22,7 +22,7 @@
     "Other"
   ],
   "keywords": [
-    "focus",
+    "aware",
     "meetings",
     "calendar",
     "microsoft 365",
@@ -39,81 +39,81 @@
   "contributes": {
     "commands": [
       {
-        "command": "focusTime.showMeetings",
-        "title": "Focus Time: Show Upcoming Meetings",
+        "command": "aware.showMeetings",
+        "title": "Aware: Show Upcoming Meetings",
         "icon": "$(calendar)"
       },
       {
-        "command": "focusTime.refreshMeetings",
-        "title": "Focus Time: Refresh Meetings",
+        "command": "aware.refreshMeetings",
+        "title": "Aware: Refresh Meetings",
         "icon": "$(refresh)"
       },
       {
-        "command": "focusTime.joinMeeting",
-        "title": "Focus Time: Join Meeting",
+        "command": "aware.joinMeeting",
+        "title": "Aware: Join Meeting",
         "icon": "$(call-outgoing)"
       },
       {
-        "command": "focusTime.refreshDocuments",
-        "title": "Focus Time: Refresh Related Documents",
+        "command": "aware.refreshDocuments",
+        "title": "Aware: Refresh Related Documents",
         "icon": "$(refresh)"
       },
       {
-        "command": "focusTime.openSettings",
-        "title": "Focus Time: Open Settings",
+        "command": "aware.openSettings",
+        "title": "Aware: Open Settings",
         "icon": "$(gear)"
       },
       {
-        "command": "focusTime.selectModel",
-        "title": "Focus Time: Select Language Model",
+        "command": "aware.selectModel",
+        "title": "Aware: Select Language Model",
         "icon": "$(copilot)"
       },
       {
-        "command": "focusTime.configureWorkIQ",
-        "title": "Focus Time: Add Work IQ MCP Server",
+        "command": "aware.configureWorkIQ",
+        "title": "Aware: Add Work IQ MCP Server",
         "icon": "$(server)"
       }
     ],
     "configuration": {
-      "title": "Focus Time",
+      "title": "Aware",
       "properties": {
-        "focusTime.meetingReminderMinutes": {
+        "aware.meetingReminderMinutes": {
           "type": "number",
           "default": 10,
           "minimum": 1,
           "maximum": 60,
           "description": "Minutes before a meeting to show a reminder notification"
         },
-        "focusTime.refreshIntervalMinutes": {
+        "aware.refreshIntervalMinutes": {
           "type": "number",
           "default": 5,
           "minimum": 1,
           "maximum": 60,
           "description": "How often to refresh the meeting list (in minutes). Lower values provide more up-to-date information but may use more premium model requests if a premium model is selected."
         },
-        "focusTime.preferredModel": {
+        "aware.preferredModel": {
           "type": "string",
           "default": "",
-          "description": "Preferred language model for the Focus Time assistant. Leave empty to use the default model. Use the 'Focus Time: Select Model' command to see available models."
+          "description": "Preferred language model for the Aware assistant. Leave empty to use the default model. Use the 'Aware: Select Model' command to see available models."
         },
 
-        "focusTime.showStatusBar": {
+        "aware.showStatusBar": {
           "type": "boolean",
           "default": true,
-          "description": "Show Focus Time status in the status bar"
+          "description": "Show Aware status in the status bar"
         },
-        "focusTime.enableNotifications": {
+        "aware.enableNotifications": {
           "type": "boolean",
           "default": true,
           "description": "Enable meeting reminder notifications"
         },
-        "focusTime.workingHoursStart": {
+        "aware.workingHoursStart": {
           "type": "string",
           "default": "09:00",
           "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$",
           "description": "Start of working hours (HH:MM format)"
         },
-        "focusTime.workingHoursEnd": {
+        "aware.workingHoursEnd": {
           "type": "string",
           "default": "17:00",
           "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$",
@@ -124,20 +124,20 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "focusTime",
-          "title": "Focus Time",
+          "id": "aware",
+          "title": "Aware",
           "icon": "$(clock)"
         }
       ]
     },
     "views": {
-      "focusTime": [
+      "aware": [
         {
-          "id": "focusTime.meetings",
+          "id": "aware.meetings",
           "name": "Upcoming Meetings"
         },
         {
-          "id": "focusTime.relatedDocuments",
+          "id": "aware.relatedDocuments",
           "name": "Related Documents"
         }
       ]
@@ -145,35 +145,35 @@
     "menus": {
       "view/title": [
         {
-          "command": "focusTime.selectModel",
-          "when": "view == focusTime.meetings",
+          "command": "aware.selectModel",
+          "when": "view == aware.meetings",
           "group": "navigation@1"
         },
         {
-          "command": "focusTime.refreshMeetings",
-          "when": "view == focusTime.meetings",
+          "command": "aware.refreshMeetings",
+          "when": "view == aware.meetings",
           "group": "navigation@2"
         },
         {
-          "command": "focusTime.refreshDocuments",
-          "when": "view == focusTime.relatedDocuments",
+          "command": "aware.refreshDocuments",
+          "when": "view == aware.relatedDocuments",
           "group": "navigation"
         }
       ],
       "view/item/context": [
         {
-          "command": "focusTime.joinMeeting",
-          "when": "view == focusTime.meetings && viewItem == meetingWithLink",
+          "command": "aware.joinMeeting",
+          "when": "view == aware.meetings && viewItem == meetingWithLink",
           "group": "inline"
         }
       ]
     },
     "chatParticipants": [
       {
-        "id": "focusTime.assistant",
-        "name": "focus",
-        "fullName": "Focus Time Assistant",
-        "description": "Helps you manage your focus time and meetings",
+        "id": "aware.assistant",
+        "name": "aware",
+        "fullName": "Aware Assistant",
+        "description": "Helps you stay aware of your meetings and schedule",
         "isSticky": false,
         "commands": [
           {
@@ -189,7 +189,7 @@
     ],
     "languageModelTools": [
       {
-        "name": "focusTime_getMeetings",
+        "name": "aware_getMeetings",
         "displayName": "Get Meetings",
         "toolReferenceName": "getMeetings",
         "description": "Get the user's upcoming meetings from their M365 calendar",
@@ -207,7 +207,7 @@
         }
       },
       {
-        "name": "focusTime_getNextMeeting",
+        "name": "aware_getNextMeeting",
         "displayName": "Get Next Meeting",
         "toolReferenceName": "getNextMeeting",
         "description": "Get the user's next upcoming meeting",

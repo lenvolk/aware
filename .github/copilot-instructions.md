@@ -1,8 +1,8 @@
-# Focus Time Extension - Copilot Instructions
+# Aware Extension - Copilot Instructions
 
 ## Project Overview
 
-Focus Time is a VS Code extension that integrates with Microsoft 365 via the Work IQ MCP server to help users track their meetings and stay aware of their schedule.
+Aware is a VS Code extension that integrates with Microsoft 365 via the Work IQ MCP server to help users track their meetings and stay aware of their schedule.
 
 ## Architecture
 
@@ -30,7 +30,7 @@ Focus Time is a VS Code extension that integrates with Microsoft 365 via the Wor
    - Parses document responses with real URLs from footnotes
 
 6. **Chat Participant** (`src/chatParticipant.ts`)
-   - Implements @focus chat participant
+   - Implements @aware chat participant
    - Handles /meetings, /next commands
    - Uses configurable language model via ModelSelector
 
@@ -52,17 +52,17 @@ Located in `src/types.ts`:
 - `RelatedDocument`: title, url, type, lastModified
 - `TimeRange`: 'today' | 'tomorrow' | 'week'
 - `WorkIQResponse`: response wrapper for Work IQ queries
-- `FocusTimeConfig`: Configuration options
+- `AwareConfig`: Configuration options
 
 ## Configuration
 
 Settings in `package.json` under `contributes.configuration`:
-- `focusTime.meetingReminderMinutes`: Minutes before meeting reminder (default: 10)
-- `focusTime.refreshIntervalMinutes`: Calendar refresh interval (default: 5). Note: Lower values may increase premium model usage.
-- `focusTime.showStatusBar`: Show status bar item (default: true)
-- `focusTime.enableNotifications`: Enable notifications (default: true)
-- `focusTime.workingHoursStart/End`: Working hours range
-- `focusTime.preferredModel`: Exact model ID to use (leave empty for auto-selection). Use `Focus Time: Select Model` command to pick from available models.
+- `aware.meetingReminderMinutes`: Minutes before meeting reminder (default: 10)
+- `aware.refreshIntervalMinutes`: Calendar refresh interval (default: 5). Note: Lower values may increase premium model usage.
+- `aware.showStatusBar`: Show status bar item (default: true)
+- `aware.enableNotifications`: Enable notifications (default: true)
+- `aware.workingHoursStart/End`: Working hours range
+- `aware.preferredModel`: Exact model ID to use (leave empty for auto-selection). Use `Aware: Select Model` command to pick from available models.
 
 ### Model Selection
 
@@ -79,7 +79,7 @@ The extension allows users to configure which language model to use:
    - **Premium models** (count against quota): All other models (Claude, Gemini, o1, o3, GPT-4.5, GPT-5, etc.)
    - Note: The VS Code API does not expose billing tier. Detection uses a hardcoded list of included model families.
 
-3. **Command**: `focusTime.selectModel` - Opens a picker showing all available models with premium indicators.
+3. **Command**: `aware.selectModel` - Opens a picker showing all available models with premium indicators.
 
 ## Work IQ Integration
 
@@ -102,7 +102,7 @@ The extension detects if Work IQ is available and prompts users to install it if
 ```
 
 - **Source**: https://github.com/microsoft/work-iq-mcp
-- **Command**: `focusTime.configureWorkIQ` - Manually add Work IQ to settings
+- **Command**: `aware.configureWorkIQ` - Manually add Work IQ to settings
 
 After installation, users need to start the MCP server. The tool `mcp_workiq_ask_work_iq` will then appear in `vscode.lm.tools`.
 
@@ -153,7 +153,7 @@ Meetings with join URLs are expandable and show a "Join Meeting" child item.
 
 ## Commands
 
-All commands prefixed with `focusTime.`:
+All commands prefixed with `aware.`:
 - showMeetings, refreshMeetings, joinMeeting, openSettings, selectModel
 
 ## Building and Testing

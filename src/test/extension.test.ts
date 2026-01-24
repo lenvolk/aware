@@ -3,11 +3,11 @@ import * as vscode from 'vscode';
 import { getConfig, isWithinWorkingHours } from '../config';
 import { Meeting } from '../types';
 
-suite('Focus Time Extension Test Suite', () => {
-	vscode.window.showInformationMessage('Start Focus Time tests.');
+suite('Aware Extension Test Suite', () => {
+	vscode.window.showInformationMessage('Start Aware tests.');
 
 	test('Extension should be present', () => {
-		assert.ok(vscode.extensions.getExtension('focus-time.focus-time'));
+		assert.ok(vscode.extensions.getExtension('aware.aware'));
 	});
 
 	test('getConfig returns valid configuration', () => {
@@ -44,9 +44,9 @@ suite('Focus Time Extension Test Suite', () => {
 		const commands = await vscode.commands.getCommands(true);
 		
 		const expectedCommands = [
-			'focusTime.showMeetings',
-			'focusTime.refreshMeetings',
-			'focusTime.openSettings'
+			'aware.showMeetings',
+			'aware.refreshMeetings',
+			'aware.openSettings'
 		];
 		
 		for (const cmd of expectedCommands) {

@@ -1,5 +1,5 @@
 /**
- * Language model tools for Focus Time extension
+ * Language model tools for Aware extension
  * These tools can be used by Copilot to help users manage their meetings
  */
 
@@ -14,7 +14,7 @@ export function registerTools(
     // Register getMeetings tool
     context.subscriptions.push(
         vscode.lm.registerTool(
-            'focusTime_getMeetings',
+            'aware_getMeetings',
             new GetMeetingsTool(meetingService)
         )
     );
@@ -22,7 +22,7 @@ export function registerTools(
     // Register getNextMeeting tool
     context.subscriptions.push(
         vscode.lm.registerTool(
-            'focusTime_getNextMeeting',
+            'aware_getNextMeeting',
             new GetNextMeetingTool(meetingService)
         )
     );

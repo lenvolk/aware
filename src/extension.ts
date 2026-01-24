@@ -1,7 +1,7 @@
 /**
- * Focus Time Extension
+ * Aware Extension
  * 
- * An AI-powered focus time manager that integrates with Microsoft 365
+ * An AI-powered awareness manager that integrates with Microsoft 365
  * via the Work IQ MCP server. It tracks your meetings and sends reminders.
  */
 
@@ -14,7 +14,7 @@ import {
     DocumentsTreeDataProvider
 } from './treeViews';
 import { DocumentService } from './documentService';
-import { FocusTimeChatParticipant } from './chatParticipant';
+import { AwareChatParticipant } from './chatParticipant';
 import { ModelSelector } from './modelSelector';
 import { registerTools } from './tools';
 import { getConfig, onConfigChange } from './config';
@@ -31,9 +31,9 @@ let refreshInterval: NodeJS.Timeout | null = null;
 
 export function activate(context: vscode.ExtensionContext) {
     // Create output channel for logging
-    outputChannel = vscode.window.createOutputChannel('Focus Time');
+    outputChannel = vscode.window.createOutputChannel('Aware');
     context.subscriptions.push(outputChannel);
-    log('Focus Time extension activating...');
+    log('Aware extension activating...');
 
     // Initialize services
     meetingService = new MeetingService(outputChannel);
@@ -47,20 +47,20 @@ export function activate(context: vscode.ExtensionContext) {
     const documentsTreeProvider = new DocumentsTreeDataProvider(documentService);
 
     // Use createTreeView for meetings so we can update description
-    meetingsTreeView = vscode.window.createTreeView('focusTime.meetings', {
+    meetingsTreeView = vscode.window.createTreeView('aware.meetings', {
         treeDataProvider: meetingsTreeProvider
     });
     context.subscriptions.push(meetingsTreeView);
 
     context.subscriptions.push(
-        vscode.window.registerTreeDataProvider('focusTime.relatedDocuments', documentsTreeProvider)
+        vscode.window.registerTreeDataProvider('aware.relatedDocuments', documentsTreeProvider)
     );
 
     // Update tree view description with current model
     updateModelDescription();
 
     // Register chat participant
-    new FocusTimeChatParticipant(context, meetingService, modelSelector);
+    new AwareChatParticipant(context, meetingService, modelSelector);
 
     // Register language model tools
     registerTools(context, meetingService);
@@ -110,8 +110,8 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    log('Focus Time extension activated successfully');
-    vscode.window.showInformationMessage('Focus Time is active! Use @focus in chat or check the sidebar.');
+    log('Aware extension activated successfully');
+    vscode.window.showInformationMessage('Aware is active! Use @aware in chat or check the sidebar.');
 }
 
 function registerCommands(
@@ -122,7 +122,7 @@ function registerCommands(
 ): void {
     // Show meetings command
     context.subscriptions.push(
-        vscode.commands.registerCommand('focusTime.showMeetings', async () => {
+        vscode.commands.registerCommand('aware.showMeetings', async () => {
             const meetings = meetingService.getCachedMeetings();
             
             if (meetings.length === 0) {
@@ -139,7 +139,7 @@ function registerCommands(
 
             const selected = await vscode.window.showQuickPick(items, {
                 placeHolder: 'Your upcoming meetings',
-                title: 'Focus Time - Meetings'
+                title: 'Aware - Meetings'
             });
 
             if (selected) {
@@ -160,7 +160,7 @@ function registerCommands(
 
     // Refresh meetings command
     context.subscriptions.push(
-        vscode.commands.registerCommand('focusTime.refreshMeetings', async () => {
+        vscode.commands.registerCommand('aware.refreshMeetings', async () => {
             await refreshMeetings();
             meetingsTreeProvider.refresh();
             vscode.window.showInformationMessage('Meetings refreshed!');
@@ -169,7 +169,7 @@ function registerCommands(
 
     // Refresh documents command
     context.subscriptions.push(
-        vscode.commands.registerCommand('focusTime.refreshDocuments', async () => {
+        vscode.commands.registerCommand('aware.refreshDocuments', async () => {
             await refreshDocuments();
             documentsTreeProvider.refresh();
             vscode.window.showInformationMessage('Related documents refreshed!');
@@ -178,7 +178,7 @@ function registerCommands(
 
     // Join meeting command
     context.subscriptions.push(
-        vscode.commands.registerCommand('focusTime.joinMeeting', async (arg?: Meeting | { meeting?: Meeting }) => {
+        vscode.commands.registerCommand('aware.joinMeeting', async (arg?: Meeting | { meeting?: Meeting }) => {
             // Handle both Meeting objects and MeetingTreeItem objects
             let meeting: Meeting | undefined;
             if (arg && 'meeting' in arg && arg.meeting) {
@@ -204,14 +204,14 @@ function registerCommands(
 
     // Open settings command
     context.subscriptions.push(
-        vscode.commands.registerCommand('focusTime.openSettings', () => {
-            vscode.commands.executeCommand('workbench.action.openSettings', 'focusTime');
+        vscode.commands.registerCommand('aware.openSettings', () => {
+            vscode.commands.executeCommand('workbench.action.openSettings', 'aware');
         })
     );
 
     // Select model command - also update description after selection
     context.subscriptions.push(
-        vscode.commands.registerCommand('focusTime.selectModel', async () => {
+        vscode.commands.registerCommand('aware.selectModel', async () => {
             await modelSelector.showModelPicker();
             updateModelDescription();
         })
@@ -219,7 +219,7 @@ function registerCommands(
 
     // Configure Work IQ command
     context.subscriptions.push(
-        vscode.commands.registerCommand('focusTime.configureWorkIQ', () => {
+        vscode.commands.registerCommand('aware.configureWorkIQ', () => {
             addWorkIQToSettings();
         })
     );
@@ -320,7 +320,7 @@ async function checkAndOfferWorkIQInstall(): Promise<void> {
     
     // Prompt user to install
     const choice = await vscode.window.showInformationMessage(
-        'Focus Time requires the Work IQ MCP server to access your Microsoft 365 calendar. Would you like to add it to your settings?',
+        'Aware requires the Work IQ MCP server to access your Microsoft 365 calendar. Would you like to add it to your settings?',
         'Yes, add Work IQ',
         'No thanks'
     );
@@ -374,5 +374,5 @@ function log(message: string): void {
 }
 
 export function deactivate() {
-    log('Focus Time extension deactivating...');
+    log('Aware extension deactivating...');
 }

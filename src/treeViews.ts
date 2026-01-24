@@ -111,7 +111,7 @@ export class JoinMeetingItem extends vscode.TreeItem {
         this.contextValue = 'joinMeetingAction';
         
         this.command = {
-            command: 'focusTime.joinMeeting',
+            command: 'aware.joinMeeting',
             title: 'Join Meeting',
             arguments: [meeting]
         };
@@ -209,7 +209,7 @@ export class MeetingTreeItem extends vscode.TreeItem {
             );
             
             this.command = {
-                command: 'focusTime.joinMeeting',
+                command: 'aware.joinMeeting',
                 title: 'Join Meeting',
                 arguments: [meeting]
             };

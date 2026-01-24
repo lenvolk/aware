@@ -1,5 +1,5 @@
 /**
- * Model selection functionality for Focus Time extension
+ * Model selection functionality for Aware extension
  * Queries available language models and lets users choose
  */
 

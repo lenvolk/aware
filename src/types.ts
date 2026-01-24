@@ -1,5 +1,5 @@
 /**
- * Core type definitions for Focus Time extension
+ * Core type definitions for Aware extension
  */
 
 export interface Meeting {
@@ -16,7 +16,7 @@ export interface Meeting {
     status: 'upcoming' | 'inProgress' | 'ended';
 }
 
-export interface FocusTimeConfig {
+export interface AwareConfig {
     meetingReminderMinutes: number;
     refreshIntervalMinutes: number;
     showStatusBar: boolean;

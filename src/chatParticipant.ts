@@ -1,6 +1,6 @@
 /**
- * Chat participant for Focus Time extension
- * Allows users to interact with the assistant via @focus in chat
+ * Chat participant for Aware extension
+ * Allows users to interact with the assistant via @aware in chat
  */
 
 import * as vscode from 'vscode';
@@ -8,7 +8,7 @@ import { MeetingService } from './meetingService';
 import { ModelSelector } from './modelSelector';
 import { onConfigChange } from './config';
 
-export class FocusTimeChatParticipant {
+export class AwareChatParticipant {
     private participant: vscode.ChatParticipant;
     private meetingService: MeetingService;
     private modelSelector: ModelSelector;
@@ -23,7 +23,7 @@ export class FocusTimeChatParticipant {
         this.modelSelector = modelSelector;
 
         this.participant = vscode.chat.createChatParticipant(
-            'focusTime.assistant',
+            'aware.assistant',
             this.handleRequest.bind(this)
         );
 
@@ -54,12 +54,12 @@ export class FocusTimeChatParticipant {
             const model = await this.modelSelector.getConfiguredModel();
             if (model) {
                 this.model = model;
-                console.log(`[Focus Time] Selected model: ${this.model.id}`);
+                console.log(`[Aware] Selected model: ${this.model.id}`);
             } else {
-                console.log('[Focus Time] No model available, will use request.model as fallback');
+                console.log('[Aware] No model available, will use request.model as fallback');
             }
         } catch (error) {
-            console.error('[Focus Time] Error selecting model:', error);
+            console.error('[Aware] Error selecting model:', error);
         }
     }
 
@@ -160,7 +160,7 @@ export class FocusTimeChatParticipant {
             if (nextMeeting.joinUrl) {
                 stream.markdown(`\n`);
                 stream.button({
-                    command: 'focusTime.joinMeeting',
+                    command: 'aware.joinMeeting',
                     arguments: [nextMeeting],
                     title: 'Join Meeting'
                 });
@@ -206,7 +206,7 @@ Respond with ONLY the category name, nothing else.`;
                 return this.handleNextCommand(stream);
             }
         } catch (error) {
-            console.log('[Focus Time] LLM classification failed, falling back to keyword matching:', error);
+            console.log('[Aware] LLM classification failed, falling back to keyword matching:', error);
             
             // Fallback to simple keyword matching
             if (prompt.includes('meeting') || prompt.includes('calendar')) {
@@ -217,8 +217,8 @@ Respond with ONLY the category name, nothing else.`;
         }
 
         // Default response with available commands
-        stream.markdown(`## Focus Time Assistant\n\n`);
-        stream.markdown(`I can help you manage your meetings. Here's what I can do:\n\n`);
+        stream.markdown(`## Aware Assistant\n\n`);
+        stream.markdown(`I can help you stay aware of your meetings. Here's what I can do:\n\n`);
         stream.markdown(`- **/meetings** - Show your upcoming meetings\n`);
         stream.markdown(`- **/next** - See when your next meeting is\n\n`);
         stream.markdown(`You can also ask me questions like:\n`);

@@ -1,13 +1,13 @@
 /**
- * Configuration management for Focus Time extension
+ * Configuration management for Aware extension
  */
 
 import * as vscode from 'vscode';
-import { FocusTimeConfig } from './types';
+import { AwareConfig } from './types';
 
-const CONFIG_SECTION = 'focusTime';
+const CONFIG_SECTION = 'aware';
 
-export function getConfig(): FocusTimeConfig {
+export function getConfig(): AwareConfig {
     const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
     
     return {
@@ -21,9 +21,9 @@ export function getConfig(): FocusTimeConfig {
     };
 }
 
-export async function updateConfig<K extends keyof FocusTimeConfig>(
+export async function updateConfig<K extends keyof AwareConfig>(
     key: K,
-    value: FocusTimeConfig[K],
+    value: AwareConfig[K],
     target: vscode.ConfigurationTarget = vscode.ConfigurationTarget.Global
 ): Promise<void> {
     const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
