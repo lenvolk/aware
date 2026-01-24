@@ -1,0 +1,266 @@
+{
+  "name": "focus-time",
+  "displayName": "Focus Time",
+  "description": "AI-powered focus time manager that tracks your M365 meetings and helps you stay focused",
+  "version": "0.0.1",
+  "publisher": "focus-time",
+  "engines": {
+    "vscode": "^1.108.1"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "focusTime.showMeetings",
+        "title": "Focus Time: Show Upcoming Meetings",
+        "icon": "$(calendar)"
+      },
+      {
+        "command": "focusTime.refreshMeetings",
+        "title": "Focus Time: Refresh Meetings",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "focusTime.toggleDoNotDisturb",
+        "title": "Focus Time: Toggle Do Not Disturb"
+      },
+      {
+        "command": "focusTime.startFocusSession",
+        "title": "Focus Time: Start Focus Session",
+        "icon": "$(play)"
+      },
+      {
+        "command": "focusTime.stopFocusSession",
+        "title": "Focus Time: Stop Focus Session",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "focusTime.joinMeeting",
+        "title": "Focus Time: Join Meeting",
+        "icon": "$(call-outgoing)"
+      },
+      {
+        "command": "focusTime.refreshDocuments",
+        "title": "Focus Time: Refresh Related Documents",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "focusTime.openSettings",
+        "title": "Focus Time: Open Settings",
+        "icon": "$(gear)"
+      }
+    ],
+    "configuration": {
+      "title": "Focus Time",
+      "properties": {
+        "focusTime.meetingReminderMinutes": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 60,
+          "description": "Minutes before a meeting to show a reminder notification"
+        },
+        "focusTime.autoEnableDoNotDisturb": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically enable Do Not Disturb when a meeting ends"
+        },
+        "focusTime.refreshIntervalMinutes": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 60,
+          "description": "How often to refresh the meeting list from your calendar"
+        },
+        "focusTime.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show Focus Time status in the status bar"
+        },
+        "focusTime.enableNotifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable meeting reminder notifications"
+        },
+        "focusTime.workingHoursStart": {
+          "type": "string",
+          "default": "09:00",
+          "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$",
+          "description": "Start of working hours (HH:MM format)"
+        },
+        "focusTime.workingHoursEnd": {
+          "type": "string",
+          "default": "17:00",
+          "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$",
+          "description": "End of working hours (HH:MM format)"
+        }
+      }
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "focusTime",
+          "title": "Focus Time",
+          "icon": "$(clock)"
+        }
+      ]
+    },
+    "views": {
+      "focusTime": [
+        {
+          "id": "focusTime.meetings",
+          "name": "Upcoming Meetings"
+        },
+        {
+          "id": "focusTime.relatedDocuments",
+          "name": "Related Documents"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "focusTime.refreshMeetings",
+          "when": "view == focusTime.meetings",
+          "group": "navigation"
+        },
+        {
+          "command": "focusTime.refreshDocuments",
+          "when": "view == focusTime.relatedDocuments",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "focusTime.joinMeeting",
+          "when": "view == focusTime.meetings && viewItem == meetingWithLink",
+          "group": "inline"
+        }
+      ]
+    },
+    "chatParticipants": [
+      {
+        "id": "focusTime.assistant",
+        "name": "focus",
+        "fullName": "Focus Time Assistant",
+        "description": "Helps you manage your focus time and meetings",
+        "isSticky": false,
+        "commands": [
+          {
+            "name": "meetings",
+            "description": "Show your upcoming meetings"
+          },
+          {
+            "name": "focus",
+            "description": "Start a focus session"
+          },
+          {
+            "name": "status",
+            "description": "Check your current focus status"
+          },
+          {
+            "name": "next",
+            "description": "When is your next meeting?"
+          }
+        ]
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "focusTime_getMeetings",
+        "displayName": "Get Meetings",
+        "toolReferenceName": "getMeetings",
+        "description": "Get the user's upcoming meetings from their M365 calendar",
+        "modelDescription": "Retrieves the user's upcoming meetings from their Microsoft 365 calendar. Use this when the user asks about their schedule, meetings, or calendar.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "timeRange": {
+              "type": "string",
+              "description": "Time range to fetch meetings for: 'today', 'tomorrow', 'week'",
+              "enum": ["today", "tomorrow", "week"]
+            }
+          }
+        }
+      },
+      {
+        "name": "focusTime_getNextMeeting",
+        "displayName": "Get Next Meeting",
+        "toolReferenceName": "getNextMeeting",
+        "description": "Get the user's next upcoming meeting",
+        "modelDescription": "Gets the user's next upcoming meeting from their calendar. Use this when the user asks about their next meeting or when they need to know how much time they have before their next meeting.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "focusTime_startFocus",
+        "displayName": "Start Focus Session",
+        "toolReferenceName": "startFocus",
+        "description": "Start a focus session and enable Do Not Disturb",
+        "modelDescription": "Starts a focus session and enables Do Not Disturb mode. Use this when the user wants to focus, concentrate, or block distractions.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "duration": {
+              "type": "number",
+              "description": "Duration in minutes for the focus session"
+            }
+          }
+        }
+      },
+      {
+        "name": "focusTime_stopFocus",
+        "displayName": "Stop Focus Session",
+        "toolReferenceName": "stopFocus",
+        "description": "Stop the current focus session",
+        "modelDescription": "Stops the current focus session and disables Do Not Disturb mode. Use this when the user wants to end their focus time or become available again.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      {
+        "name": "focusTime_getFocusStatus",
+        "displayName": "Get Focus Status",
+        "toolReferenceName": "getFocusStatus",
+        "description": "Get the current focus session status",
+        "modelDescription": "Gets the current focus session status including whether a session is active and remaining time. Use this when the user asks about their focus status or remaining focus time.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        }
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.108.1",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "typescript-eslint": "^8.52.0",
+    "eslint": "^9.39.2",
+    "typescript": "^5.9.3",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2"
+  }
+}
