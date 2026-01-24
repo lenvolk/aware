@@ -1,6 +1,6 @@
 # Aware
 
-AI-powered awareness manager for VS Code that integrates with Microsoft 365 to track your meetings and help you stay focused.
+AI-powered meeting awareness for VS Code that integrates with Microsoft 365 to help you stay on top of your schedule.
 
 ## Prerequisites
 
@@ -47,29 +47,23 @@ npx @microsoft/workiq accept-eula
 - **Automatic Calendar Sync**: Uses the Work IQ MCP server to fetch your upcoming meetings from Microsoft 365
 - **Meeting Reminders**: Get notified before meetings start (configurable reminder time)
 - **Status Bar Integration**: See your next meeting at a glance in the VS Code status bar
-
-### Focus Mode
-- **Auto Do Not Disturb**: Automatically enables Do Not Disturb when a meeting ends, giving you uninterrupted focus time
-- **Focus Sessions**: Start timed focus sessions with a single command
-- **Cross-Platform DND**: Supports Windows Focus Assist, macOS Do Not Disturb, and GNOME notifications
+- **One-Click Join**: Join online meetings directly from VS Code
 
 ### Copilot Integration
-- **@aware Chat Participant**: Chat with `@aware` to manage your meetings and focus time
+- **@aware Chat Participant**: Chat with `@aware` to manage your meetings
   - `/meetings` - Show your upcoming meetings
-  - `/focus` - Start a focus session
-  - `/status` - Check your current focus status
   - `/next` - See when your next meeting is
 
 - **Language Model Tools**: Copilot can use these tools to help you:
-  - `aware_getMeetings` - Get upcoming meetings
+  - `aware_getMeetings` - Get upcoming meetings for today, tomorrow, or the week
   - `aware_getNextMeeting` - Get next meeting details
-  - `aware_startFocus` - Start a focus session
-  - `aware_stopFocus` - Stop focus session
-  - `aware_getFocusStatus` - Check focus status
 
 ### Sidebar Views
-- **Upcoming Meetings**: See all your meetings in a dedicated sidebar view
-- **Focus Status**: Monitor your current focus session
+- **Upcoming Meetings**: See all your meetings in a dedicated sidebar view, organized by time
+  - **Happening Now** - Meetings currently in progress
+  - **Starting Soon** - Meetings within the next 15 minutes
+  - **Later Today** - All other upcoming meetings
+- **Related Documents**: See M365 documents related to your current workspace
 
 ## Requirements
 
@@ -88,8 +82,8 @@ This extension contributes the following settings:
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `aware.meetingReminderMinutes` | `10` | Minutes before a meeting to show a reminder notification |
-| `aware.autoEnableDoNotDisturb` | `true` | Automatically enable Do Not Disturb when a meeting ends |
 | `aware.refreshIntervalMinutes` | `5` | How often to refresh the meeting list from your calendar |
+| `aware.preferredModel` | `""` | Preferred language model for the Aware assistant. Use `Aware: Select Model` to choose. |
 | `aware.showStatusBar` | `true` | Show Aware status in the status bar |
 | `aware.enableNotifications` | `true` | Enable meeting reminder notifications |
 | `aware.workingHoursStart` | `09:00` | Start of working hours (HH:MM format) |
@@ -99,12 +93,12 @@ This extension contributes the following settings:
 
 | Command | Description |
 |---------|-------------|
-| `Aware: Show Upcoming Meetings` | Display your upcoming meetings |
+| `Aware: Show Upcoming Meetings` | Display your upcoming meetings in a quick pick |
 | `Aware: Refresh Meetings` | Refresh the meeting list from your calendar |
-| `Aware: Toggle Do Not Disturb` | Toggle Do Not Disturb mode |
-| `Aware: Start Focus Session` | Start a new focus session |
-| `Aware: Stop Focus Session` | Stop the current focus session |
+| `Aware: Refresh Related Documents` | Refresh documents related to your current workspace |
 | `Aware: Join Meeting` | Join the current or next online meeting |
+| `Aware: Select Language Model` | Choose which AI model Aware uses |
+| `Aware: Add Work IQ MCP Server` | Add the Work IQ MCP server to your settings |
 | `Aware: Open Settings` | Open Aware settings |
 
 ## How It Works
@@ -115,22 +109,12 @@ This extension contributes the following settings:
 
 3. **Notifications**: When a meeting is approaching (based on `meetingReminderMinutes`), you'll receive a notification with options to join or dismiss.
 
-4. **Focus Mode Activation**: When a meeting ends, the extension automatically enables Do Not Disturb on your system, allowing you to focus without interruptions.
-
-5. **Copilot Integration**: Use `@aware` in Copilot Chat to interact with your calendar and focus sessions using natural language.
-
-## Platform Support
-
-### Do Not Disturb Implementation
-- **Windows 11**: Uses PowerShell UI Automation to toggle Focus Assist automatically. Falls back to opening Quick Settings if automation fails.
-- **macOS (Monterey+)**: Uses Shortcuts app to toggle Do Not Disturb
-- **Linux (GNOME)**: Uses gsettings to disable notification banners
+4. **Copilot Integration**: Use `@aware` in Copilot Chat to interact with your calendar using natural language.
 
 ## Known Issues
 
 - Work IQ requires a Microsoft 365 Copilot license; the extension will show an error if the MCP server is not configured
 - Some meeting properties may not be available depending on your Microsoft 365 configuration
-- Windows 11 DND automation may require running VS Code with appropriate permissions
 
 ## Troubleshooting
 
@@ -150,11 +134,11 @@ This extension contributes the following settings:
 
 - Initial release
 - Meeting tracking and reminders
-- Focus session management
-- @aware chat participant
+- @aware chat participant with /meetings and /next commands
 - Language model tools for Copilot
-- Cross-platform Do Not Disturb support
+- Sidebar views for meetings and related documents
+- Status bar integration
 
 ---
 
-**Enjoy your focused coding time!**
+**Stay aware, stay on schedule!**
