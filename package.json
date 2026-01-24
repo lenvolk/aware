@@ -3,12 +3,34 @@
   "displayName": "Focus Time",
   "description": "AI-powered focus time manager that tracks your M365 meetings and helps you stay focused",
   "version": "0.0.1",
-  "publisher": "focus-time",
+  "publisher": "burkeholland",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/burkeholland/focus-time"
+  },
+  "homepage": "https://github.com/burkeholland/focus-time#readme",
+  "bugs": {
+    "url": "https://github.com/burkeholland/focus-time/issues"
+  },
+  "icon": "resources/icon.png",
   "engines": {
     "vscode": "^1.108.1"
   },
   "categories": [
+    "AI",
     "Other"
+  ],
+  "keywords": [
+    "focus",
+    "meetings",
+    "calendar",
+    "microsoft 365",
+    "copilot",
+    "productivity"
+  ],
+  "extensionDependencies": [
+    "github.copilot-chat"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -27,20 +49,6 @@
         "icon": "$(refresh)"
       },
       {
-        "command": "focusTime.toggleDoNotDisturb",
-        "title": "Focus Time: Toggle Do Not Disturb"
-      },
-      {
-        "command": "focusTime.startFocusSession",
-        "title": "Focus Time: Start Focus Session",
-        "icon": "$(play)"
-      },
-      {
-        "command": "focusTime.stopFocusSession",
-        "title": "Focus Time: Stop Focus Session",
-        "icon": "$(debug-stop)"
-      },
-      {
         "command": "focusTime.joinMeeting",
         "title": "Focus Time: Join Meeting",
         "icon": "$(call-outgoing)"
@@ -54,6 +62,16 @@
         "command": "focusTime.openSettings",
         "title": "Focus Time: Open Settings",
         "icon": "$(gear)"
+      },
+      {
+        "command": "focusTime.selectModel",
+        "title": "Focus Time: Select Language Model",
+        "icon": "$(copilot)"
+      },
+      {
+        "command": "focusTime.configureWorkIQ",
+        "title": "Focus Time: Add Work IQ MCP Server",
+        "icon": "$(server)"
       }
     ],
     "configuration": {
@@ -66,18 +84,19 @@
           "maximum": 60,
           "description": "Minutes before a meeting to show a reminder notification"
         },
-        "focusTime.autoEnableDoNotDisturb": {
-          "type": "boolean",
-          "default": true,
-          "description": "Automatically enable Do Not Disturb when a meeting ends"
-        },
         "focusTime.refreshIntervalMinutes": {
           "type": "number",
           "default": 5,
           "minimum": 1,
           "maximum": 60,
-          "description": "How often to refresh the meeting list from your calendar"
+          "description": "How often to refresh the meeting list (in minutes). Lower values provide more up-to-date information but may use more premium model requests if a premium model is selected."
         },
+        "focusTime.preferredModel": {
+          "type": "string",
+          "default": "",
+          "description": "Preferred language model for the Focus Time assistant. Leave empty to use the default model. Use the 'Focus Time: Select Model' command to see available models."
+        },
+
         "focusTime.showStatusBar": {
           "type": "boolean",
           "default": true,
@@ -126,9 +145,14 @@
     "menus": {
       "view/title": [
         {
+          "command": "focusTime.selectModel",
+          "when": "view == focusTime.meetings",
+          "group": "navigation@1"
+        },
+        {
           "command": "focusTime.refreshMeetings",
           "when": "view == focusTime.meetings",
-          "group": "navigation"
+          "group": "navigation@2"
         },
         {
           "command": "focusTime.refreshDocuments",
@@ -155,14 +179,6 @@
           {
             "name": "meetings",
             "description": "Show your upcoming meetings"
-          },
-          {
-            "name": "focus",
-            "description": "Start a focus session"
-          },
-          {
-            "name": "status",
-            "description": "Check your current focus status"
           },
           {
             "name": "next",
@@ -196,47 +212,6 @@
         "toolReferenceName": "getNextMeeting",
         "description": "Get the user's next upcoming meeting",
         "modelDescription": "Gets the user's next upcoming meeting from their calendar. Use this when the user asks about their next meeting or when they need to know how much time they have before their next meeting.",
-        "canBeReferencedInPrompt": true,
-        "inputSchema": {
-          "type": "object",
-          "properties": {}
-        }
-      },
-      {
-        "name": "focusTime_startFocus",
-        "displayName": "Start Focus Session",
-        "toolReferenceName": "startFocus",
-        "description": "Start a focus session and enable Do Not Disturb",
-        "modelDescription": "Starts a focus session and enables Do Not Disturb mode. Use this when the user wants to focus, concentrate, or block distractions.",
-        "canBeReferencedInPrompt": true,
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "duration": {
-              "type": "number",
-              "description": "Duration in minutes for the focus session"
-            }
-          }
-        }
-      },
-      {
-        "name": "focusTime_stopFocus",
-        "displayName": "Stop Focus Session",
-        "toolReferenceName": "stopFocus",
-        "description": "Stop the current focus session",
-        "modelDescription": "Stops the current focus session and disables Do Not Disturb mode. Use this when the user wants to end their focus time or become available again.",
-        "canBeReferencedInPrompt": true,
-        "inputSchema": {
-          "type": "object",
-          "properties": {}
-        }
-      },
-      {
-        "name": "focusTime_getFocusStatus",
-        "displayName": "Get Focus Status",
-        "toolReferenceName": "getFocusStatus",
-        "description": "Get the current focus session status",
-        "modelDescription": "Gets the current focus session status including whether a session is active and remaining time. Use this when the user asks about their focus status or remaining focus time.",
         "canBeReferencedInPrompt": true,
         "inputSchema": {
           "type": "object",

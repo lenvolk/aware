@@ -3,20 +3,17 @@
  */
 
 import * as vscode from 'vscode';
-import { Meeting, FocusSession } from './types';
+import { Meeting } from './types';
 import { getConfig } from './config';
 import { MeetingService } from './meetingService';
-import { FocusSessionManager } from './focusSessionManager';
 
 export class StatusBarManager {
     private statusBarItem: vscode.StatusBarItem;
     private meetingService: MeetingService;
-    private focusSessionManager: FocusSessionManager;
     private updateInterval: NodeJS.Timeout | null = null;
 
-    constructor(meetingService: MeetingService, focusSessionManager: FocusSessionManager) {
+    constructor(meetingService: MeetingService) {
         this.meetingService = meetingService;
-        this.focusSessionManager = focusSessionManager;
         
         this.statusBarItem = vscode.window.createStatusBarItem(
             'focusTime.status',
@@ -29,9 +26,6 @@ export class StatusBarManager {
         
         // Subscribe to events
         this.meetingService.onMeetingsUpdated(() => this.update());
-        this.focusSessionManager.onSessionStarted(() => this.update());
-        this.focusSessionManager.onSessionEnded(() => this.update());
-        this.focusSessionManager.onSessionUpdated(() => this.update());
     }
 
     start(): void {
@@ -60,13 +54,10 @@ export class StatusBarManager {
     }
 
     update(): void {
-        const session = this.focusSessionManager.getCurrentSession();
         const nextMeeting = this.meetingService.getNextMeeting();
         const currentMeeting = this.meetingService.getCurrentMeeting();
         
-        if (session?.isActive) {
-            this.showFocusMode(session);
-        } else if (currentMeeting) {
+        if (currentMeeting) {
             this.showInMeeting(currentMeeting);
         } else if (nextMeeting) {
             this.showNextMeeting(nextMeeting);
@@ -75,23 +66,10 @@ export class StatusBarManager {
         }
     }
 
-    private showFocusMode(session: FocusSession): void {
-        const remaining = session.remainingMinutes;
-        
-        this.statusBarItem.text = `$(eye-closed) Focus: ${remaining}m`;
-        this.statusBarItem.tooltip = new vscode.MarkdownString(
-            `**Focus Mode Active**\n\n` +
-            `Time remaining: ${remaining} minutes\n\n` +
-            `Click to view meetings or manage focus session`
-        );
-        this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
-        this.statusBarItem.command = 'focusTime.stopFocusSession';
-    }
-
     private showInMeeting(meeting: Meeting): void {
         const endTime = this.formatTime(meeting.endTime);
         
-        this.statusBarItem.text = `$(call-outgoing) In meeting until ${endTime}`;
+        this.statusBarItem.text = `$(pulse) Meeting Now`;
         this.statusBarItem.tooltip = new vscode.MarkdownString(
             `**Currently in: ${meeting.title}**\n\n` +
             `Ends at: ${endTime}\n\n` +
@@ -133,13 +111,13 @@ export class StatusBarManager {
     }
 
     private showDefault(): void {
-        this.statusBarItem.text = '$(clock) Focus Time';
+        this.statusBarItem.text = '$(calendar) No meetings';
         this.statusBarItem.tooltip = new vscode.MarkdownString(
             `**No upcoming meetings**\n\n` +
-            `Click to start a focus session or view meetings`
+            `Click to view meetings`
         );
         this.statusBarItem.backgroundColor = undefined;
-        this.statusBarItem.command = 'focusTime.startFocusSession';
+        this.statusBarItem.command = 'focusTime.showMeetings';
     }
 
     private formatTime(date: Date): string {

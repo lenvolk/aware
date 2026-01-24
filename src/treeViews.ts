@@ -5,7 +5,6 @@
 import * as vscode from 'vscode';
 import { Meeting, RelatedDocument } from './types';
 import { MeetingService } from './meetingService';
-import { FocusSessionManager } from './focusSessionManager';
 import { DocumentService } from './documentService';
 
 type MeetingTreeElement = MeetingCategoryItem | MeetingTreeItem | JoinMeetingItem;
@@ -16,8 +15,7 @@ export class MeetingsTreeDataProvider implements vscode.TreeDataProvider<Meeting
     private isLoading = false;
 
     constructor(
-        private meetingService: MeetingService,
-        private focusSessionManager: FocusSessionManager
+        private meetingService: MeetingService
     ) {
         // Refresh when meetings are updated
         this.meetingService.onMeetingsUpdated(() => {
@@ -60,8 +58,11 @@ export class MeetingsTreeDataProvider implements vscode.TreeDataProvider<Meeting
 
         // If we're at the root level
         if (!element) {
+            const items: MeetingTreeElement[] = [];
+
             if (this.isLoading) {
-                return Promise.resolve([new MeetingTreeItem(null, 'loading')]);
+                items.push(new MeetingTreeItem(null, 'loading'));
+                return Promise.resolve(items);
             }
 
             const meetings = this.meetingService.getCachedMeetings();
@@ -71,33 +72,31 @@ export class MeetingsTreeDataProvider implements vscode.TreeDataProvider<Meeting
             // Categorize meetings
             const happeningNow = meetings.filter(m => m.status === 'inProgress');
             const startingSoon = meetings.filter(m => {
-                if (m.status !== 'upcoming') return false;
+                if (m.status !== 'upcoming') {return false;}
                 const timeUntil = m.startTime.getTime() - now;
                 return timeUntil <= fifteenMinutes && timeUntil > 0;
             });
             const upcoming = meetings.filter(m => {
-                if (m.status !== 'upcoming') return false;
+                if (m.status !== 'upcoming') {return false;}
                 const timeUntil = m.startTime.getTime() - now;
                 return timeUntil > fifteenMinutes;
             });
 
-            const categories: MeetingCategoryItem[] = [];
-
             if (happeningNow.length > 0) {
-                categories.push(new MeetingCategoryItem('now', happeningNow, 'Happening Now'));
+                items.push(new MeetingCategoryItem('now', happeningNow, 'Happening Now'));
             }
             if (startingSoon.length > 0) {
-                categories.push(new MeetingCategoryItem('soon', startingSoon, 'Starting Soon'));
+                items.push(new MeetingCategoryItem('soon', startingSoon, 'Starting Soon'));
             }
             if (upcoming.length > 0) {
-                categories.push(new MeetingCategoryItem('upcoming', upcoming, 'Later Today'));
+                items.push(new MeetingCategoryItem('upcoming', upcoming, 'Later Today'));
             }
 
-            if (categories.length === 0) {
-                return Promise.resolve([new MeetingTreeItem(null, 'empty')]);
+            if (items.length === 0) { // No meetings
+                items.push(new MeetingTreeItem(null, 'empty'));
             }
 
-            return Promise.resolve(categories);
+            return Promise.resolve(items);
         }
 
         return Promise.resolve([]);
@@ -371,10 +370,10 @@ export class DocumentTreeItem extends vscode.TreeItem {
         const now = new Date();
         const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
         
-        if (diffDays === 0) return 'Today';
-        if (diffDays === 1) return 'Yesterday';
-        if (diffDays < 7) return `${diffDays} days ago`;
-        if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+        if (diffDays === 0) {return 'Today';}
+        if (diffDays === 1) {return 'Yesterday';}
+        if (diffDays < 7) {return `${diffDays} days ago`;}
+        if (diffDays < 30) {return `${Math.floor(diffDays / 7)} weeks ago`;}
         return date.toLocaleDateString();
     }
 }

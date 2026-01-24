@@ -12,12 +12,12 @@ export function getConfig(): FocusTimeConfig {
     
     return {
         meetingReminderMinutes: config.get<number>('meetingReminderMinutes', 10),
-        autoEnableDoNotDisturb: config.get<boolean>('autoEnableDoNotDisturb', true),
         refreshIntervalMinutes: config.get<number>('refreshIntervalMinutes', 5),
         showStatusBar: config.get<boolean>('showStatusBar', true),
         enableNotifications: config.get<boolean>('enableNotifications', true),
         workingHoursStart: config.get<string>('workingHoursStart', '09:00'),
         workingHoursEnd: config.get<string>('workingHoursEnd', '17:00'),
+        preferredModel: config.get<string>('preferredModel', ''),
     };
 }
 

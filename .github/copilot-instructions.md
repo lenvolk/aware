@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Focus Time is a VS Code extension that integrates with Microsoft 365 via the Work IQ MCP server to help users manage their focus time around meetings.
+Focus Time is a VS Code extension that integrates with Microsoft 365 via the Work IQ MCP server to help users track their meetings and stay aware of their schedule.
 
 ## Architecture
 
@@ -13,100 +13,98 @@ Focus Time is a VS Code extension that integrates with Microsoft 365 via the Wor
    - Parses natural language responses into structured Meeting objects
    - Caches meetings and refreshes at configured intervals
 
-2. **FocusSessionManager** (`src/focusSessionManager.ts`)
-   - Manages focus session state (start, stop, duration tracking)
-   - Auto-starts focus after meetings end
-   - Controls Do Not Disturb on Windows/Mac/Linux
-
-3. **NotificationManager** (`src/notificationManager.ts`)
+2. **NotificationManager** (`src/notificationManager.ts`)
    - Schedules and displays meeting reminders
    - Tracks which notifications have been sent
 
-4. **StatusBarManager** (`src/statusBar.ts`)
-   - Shows next meeting or focus status in status bar
+3. **StatusBarManager** (`src/statusBar.ts`)
+   - Shows next meeting in status bar
+   - Shows red "Meeting Now" indicator when a meeting is in progress
 
-5. **Tree Views** (`src/treeViews.ts`)
+4. **Tree Views** (`src/treeViews.ts`)
    - MeetingsTreeDataProvider: Shows upcoming meetings in categories (Now, Soon, Later)
    - DocumentsTreeDataProvider: Shows related documents for current repo
-   - ActionItemsTreeDataProvider: Shows action items from meetings/emails
-   - EmailsTreeDataProvider: Shows important unread emails
-   - CollaboratorsTreeDataProvider: Shows key collaborators
-   - MeetingPrepTreeDataProvider: Shows prep info for next meeting
-   - FocusStatusTreeDataProvider: Shows focus session status
 
-6. **Document Service** (`src/documentService.ts`)
+5. **Document Service** (`src/documentService.ts`)
    - Queries Work IQ for documents related to current repo
    - Parses document responses with real URLs from footnotes
 
-7. **Action Items Service** (`src/actionItemsService.ts`)
-   - Queries Work IQ for action items from recent meetings/emails
-   - Tracks status (not-started, in-progress, pending, completed)
-
-8. **Email Service** (`src/emailService.ts`)
-   - Queries Work IQ for important unread emails
-   - Shows sender, importance, attachments, needs-response flag
-
-9. **Collaborators Service** (`src/collaboratorsService.ts`)
-   - Queries Work IQ for frequently interacted collaborators
-   - Shows role, department, last interaction type
-
-10. **Meeting Prep Service** (`src/meetingPrepService.ts`)
-    - Queries Work IQ for context on upcoming meeting
-    - Shows topics, previous decisions, related documents
-
-11. **Chat Participant** (`src/chatParticipant.ts`)
+6. **Chat Participant** (`src/chatParticipant.ts`)
    - Implements @focus chat participant
-   - Handles /meetings, /focus, /status, /next commands
+   - Handles /meetings, /next commands
+   - Uses configurable language model via ModelSelector
+
+7. **ModelSelector** (`src/modelSelector.ts`)
+   - Queries available Copilot language models
+   - Identifies premium vs standard models
+   - Provides model picker UI with premium warnings
 
 8. **Language Model Tools** (`src/tools.ts`)
-   - Provides tools for Copilot: getMeetings, getNextMeeting, startFocus, stopFocus, getFocusStatus
+   - Provides tools for Copilot: getMeetings, getNextMeeting
+
+9. **Config** (`src/config.ts`)
+   - Centralized configuration access for all settings
 
 ## Key Types
 
 Located in `src/types.ts`:
 - `Meeting`: id, title, startTime, endTime, duration, isOnline, status, joinUrl
-- `FocusSession`: id, startTime, duration, remainingMinutes, isActive
-- `ActionItem`: task, source, sourceType, status, dueDate
-- `ImportantEmail`: subject, from, importance, needsResponse, preview
-- `Collaborator`: name, email, role, department, recentInteractionType
-- `MeetingPrep`: topics, previousDecisions, relatedDocuments
+- `RelatedDocument`: title, url, type, lastModified
+- `TimeRange`: 'today' | 'tomorrow' | 'week'
+- `WorkIQResponse`: response wrapper for Work IQ queries
 - `FocusTimeConfig`: Configuration options
 
 ## Configuration
 
 Settings in `package.json` under `contributes.configuration`:
 - `focusTime.meetingReminderMinutes`: Minutes before meeting reminder (default: 10)
-- `focusTime.autoEnableDoNotDisturb`: Auto-enable DND after meetings (default: true)
-- `focusTime.refreshIntervalMinutes`: Calendar refresh interval (default: 5)
+- `focusTime.refreshIntervalMinutes`: Calendar refresh interval (default: 5). Note: Lower values may increase premium model usage.
 - `focusTime.showStatusBar`: Show status bar item (default: true)
 - `focusTime.enableNotifications`: Enable notifications (default: true)
 - `focusTime.workingHoursStart/End`: Working hours range
+- `focusTime.preferredModel`: Exact model ID to use (leave empty for auto-selection). Use `Focus Time: Select Model` command to pick from available models.
 
-## Windows Do Not Disturb Control
+### Model Selection
 
-**Important**: Windows 11 has NO public API for toggling Do Not Disturb / Focus Assist programmatically. 
+The extension allows users to configure which language model to use:
 
-### Available Methods (reliability order)
+1. **ModelSelector** (`src/modelSelector.ts`)
+   - Queries available Copilot models via `vscode.lm.selectChatModels()`
+   - Identifies premium vs included models
+   - Provides QuickPick UI for model selection
+   - Warns users about premium model usage with auto-refresh
 
-1. **UI Automation (current implementation)**: Uses PowerShell + System.Windows.Automation to:
-   - Open Notification Center (Win+N)
-   - Find the "Do not disturb" button via automation
-   - Click it programmatically
-   - Close the panel
-   - Falls back to opening Quick Settings if automation fails
+2. **Premium Model Detection**: 
+   - **Included models** (unlimited on paid plans): GPT-5 mini, GPT-4.1, GPT-4o
+   - **Premium models** (count against quota): All other models (Claude, Gemini, o1, o3, GPT-4.5, GPT-5, etc.)
+   - Note: The VS Code API does not expose billing tier. Detection uses a hardcoded list of included model families.
 
-2. **Settings URI fallback**: `ms-settings:notifications` opens notification settings for manual toggle
-
-3. **Registry approach**: Does NOT work reliably - the CloudStore binary format is undocumented and changes don't apply immediately
-
-### Platform-specific DND implementations
-- **Windows**: UI Automation via PowerShell (see above)
-- **macOS**: Shortcuts app "Turn On/Off Do Not Disturb" (requires Monterey+)
-- **Linux**: `gsettings set org.gnome.desktop.notifications show-banners false`
+3. **Command**: `focusTime.selectModel` - Opens a picker showing all available models with premium indicators.
 
 ## Work IQ Integration
 
-The extension queries Work IQ MCP server using natural language queries.
+The extension integrates with Microsoft Work IQ MCP server for M365 data access.
+
+### MCP Server Setup
+
+The extension detects if Work IQ is available and prompts users to install it if not. When the user accepts, it adds the following to their VS Code user settings (`mcp.servers`):
+
+```json
+{
+  "workiq": {
+    "command": "npx",
+    "args": ["-y", "@microsoft/workiq", "mcp"],
+    "env": {
+      "npm_config_registry": "https://registry.npmjs.org"
+    }
+  }
+}
+```
+
+- **Source**: https://github.com/microsoft/work-iq-mcp
+- **Command**: `focusTime.configureWorkIQ` - Manually add Work IQ to settings
+
+After installation, users need to start the MCP server. The tool `mcp_workiq_ask_work_iq` will then appear in `vscode.lm.tools`.
 
 ### Tested Query Format (IMPORTANT)
 The following prompt format has been tested and produces predictable, parseable responses:
@@ -156,8 +154,7 @@ Meetings with join URLs are expandable and show a "Join Meeting" child item.
 ## Commands
 
 All commands prefixed with `focusTime.`:
-- showMeetings, refreshMeetings, toggleDoNotDisturb
-- startFocusSession, stopFocusSession, joinMeeting, openSettings
+- showMeetings, refreshMeetings, joinMeeting, openSettings, selectModel
 
 ## Building and Testing
 
@@ -172,6 +169,5 @@ npm run lint       # Lint code
 
 - Work IQ MCP server must be configured and connected
 - The MCP tool name is `mcp_workiq_ask_work_iq` - use `vscode.lm.invokeTool()` to invoke it
-- DND on Windows uses PowerShell to modify notification registry settings
 - Chat participant requires GitHub Copilot extension
 - Language model tools require `name`, `displayName`, `description`, `modelDescription`, and `toolReferenceName` when `canBeReferencedInPrompt` is true

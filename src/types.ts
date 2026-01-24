@@ -16,24 +16,14 @@ export interface Meeting {
     status: 'upcoming' | 'inProgress' | 'ended';
 }
 
-export interface FocusSession {
-    id: string;
-    startTime: Date;
-    endTime?: Date;
-    duration: number; // planned duration in minutes
-    remainingMinutes: number;
-    isActive: boolean;
-    reason?: string;
-}
-
 export interface FocusTimeConfig {
     meetingReminderMinutes: number;
-    autoEnableDoNotDisturb: boolean;
     refreshIntervalMinutes: number;
     showStatusBar: boolean;
     enableNotifications: boolean;
     workingHoursStart: string;
     workingHoursEnd: string;
+    preferredModel: string;
 }
 
 export interface MeetingNotification {
@@ -60,16 +50,4 @@ export type TimeRange = 'today' | 'tomorrow' | 'week';
 
 export interface GetMeetingsInput {
     timeRange?: TimeRange;
-}
-
-export interface StartFocusInput {
-    duration?: number;
-}
-
-export interface FocusStatusResult {
-    isActive: boolean;
-    remainingMinutes?: number;
-    endTime?: Date;
-    nextMeeting?: Meeting;
-    minutesUntilNextMeeting?: number;
 }

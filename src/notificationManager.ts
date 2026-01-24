@@ -1,29 +1,24 @@
 /**
- * Notification manager for meeting reminders and focus time alerts
+ * Notification manager for meeting reminders
  */
 
 import * as vscode from 'vscode';
 import { Meeting, MeetingNotification } from './types';
 import { getConfig } from './config';
 import { MeetingService } from './meetingService';
-import { FocusSessionManager } from './focusSessionManager';
 
 export class NotificationManager {
     private outputChannel: vscode.OutputChannel;
     private meetingService: MeetingService;
-    private focusSessionManager: FocusSessionManager;
     private sentNotifications: Map<string, MeetingNotification> = new Map();
     private checkInterval: NodeJS.Timeout | null = null;
-    private lastMeetingInProgress: Meeting | null = null;
 
     constructor(
         outputChannel: vscode.OutputChannel,
-        meetingService: MeetingService,
-        focusSessionManager: FocusSessionManager
+        meetingService: MeetingService
     ) {
         this.outputChannel = outputChannel;
         this.meetingService = meetingService;
-        this.focusSessionManager = focusSessionManager;
         
         // Also check for notifications when meetings are updated
         this.meetingService.onMeetingsUpdated(() => {
@@ -64,19 +59,6 @@ export class NotificationManager {
         this.log(`Checking ${meetings.length} meetings for notifications...`);
 
         for (const meeting of meetings) {
-            // Check for meeting that just ended
-            if (meeting.status === 'ended' && this.lastMeetingInProgress?.id === meeting.id) {
-                this.lastMeetingInProgress = null;
-                await this.handleMeetingEnded(meeting);
-                continue;
-            }
-
-            // Track meeting in progress
-            if (meeting.status === 'inProgress') {
-                this.lastMeetingInProgress = meeting;
-                continue;
-            }
-
             if (meeting.status !== 'upcoming') {
                 continue;
             }
@@ -132,11 +114,6 @@ export class NotificationManager {
             actions.unshift('Join Meeting');
         }
 
-        // If there's an active focus session, offer to stop it
-        if (this.focusSessionManager.getCurrentSession()?.isActive) {
-            actions.push('End Focus Session');
-        }
-
         const result = await vscode.window.showInformationMessage(
             `📅 "${meeting.title}" starts in ${minutesUntil} minute${minutesUntil > 1 ? 's' : ''}`,
             ...actions
@@ -144,8 +121,6 @@ export class NotificationManager {
 
         if (result === 'Join Meeting' && meeting.joinUrl) {
             vscode.env.openExternal(vscode.Uri.parse(meeting.joinUrl));
-        } else if (result === 'End Focus Session') {
-            await this.focusSessionManager.stopSession();
         }
     }
 
@@ -165,28 +140,6 @@ export class NotificationManager {
 
         if (result === 'Join Now' && meeting.joinUrl) {
             vscode.env.openExternal(vscode.Uri.parse(meeting.joinUrl));
-        }
-    }
-
-    private async handleMeetingEnded(meeting: Meeting): Promise<void> {
-        this.log(`Meeting ended: ${meeting.title}`);
-
-        const config = getConfig();
-        
-        if (config.autoEnableDoNotDisturb) {
-            // Automatically start focus session after meeting
-            await this.focusSessionManager.startFocusAfterMeeting(meeting);
-        } else {
-            // Ask user if they want to start focus time
-            const result = await vscode.window.showInformationMessage(
-                `Meeting "${meeting.title}" has ended. Would you like to start a focus session?`,
-                'Start Focus Time',
-                'No Thanks'
-            );
-
-            if (result === 'Start Focus Time') {
-                await this.focusSessionManager.startSession();
-            }
         }
     }
 

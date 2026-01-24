@@ -2,13 +2,11 @@
  * Focus Time Extension
  * 
  * An AI-powered focus time manager that integrates with Microsoft 365
- * via the Work IQ MCP server. It tracks your meetings, sends reminders,
- * and automatically enables Do Not Disturb mode after meetings end.
+ * via the Work IQ MCP server. It tracks your meetings and sends reminders.
  */
 
 import * as vscode from 'vscode';
 import { MeetingService } from './meetingService';
-import { FocusSessionManager } from './focusSessionManager';
 import { NotificationManager } from './notificationManager';
 import { StatusBarManager } from './statusBar';
 import { 
@@ -17,6 +15,7 @@ import {
 } from './treeViews';
 import { DocumentService } from './documentService';
 import { FocusTimeChatParticipant } from './chatParticipant';
+import { ModelSelector } from './modelSelector';
 import { registerTools } from './tools';
 import { getConfig, onConfigChange } from './config';
 import { Meeting } from './types';
@@ -24,9 +23,10 @@ import { Meeting } from './types';
 let outputChannel: vscode.OutputChannel;
 let meetingService: MeetingService;
 let documentService: DocumentService;
-let focusSessionManager: FocusSessionManager;
 let notificationManager: NotificationManager;
 let statusBarManager: StatusBarManager;
+let modelSelector: ModelSelector;
+let meetingsTreeView: vscode.TreeView<unknown>;
 let refreshInterval: NodeJS.Timeout | null = null;
 
 export function activate(context: vscode.ExtensionContext) {
@@ -38,30 +38,42 @@ export function activate(context: vscode.ExtensionContext) {
     // Initialize services
     meetingService = new MeetingService(outputChannel);
     documentService = new DocumentService(outputChannel);
-    focusSessionManager = new FocusSessionManager(outputChannel, meetingService);
-    notificationManager = new NotificationManager(outputChannel, meetingService, focusSessionManager);
-    statusBarManager = new StatusBarManager(meetingService, focusSessionManager);
+    notificationManager = new NotificationManager(outputChannel, meetingService);
+    statusBarManager = new StatusBarManager(meetingService);
+    modelSelector = new ModelSelector(outputChannel);
 
     // Register tree views
-    const meetingsTreeProvider = new MeetingsTreeDataProvider(meetingService, focusSessionManager);
+    const meetingsTreeProvider = new MeetingsTreeDataProvider(meetingService);
     const documentsTreeProvider = new DocumentsTreeDataProvider(documentService);
 
+    // Use createTreeView for meetings so we can update description
+    meetingsTreeView = vscode.window.createTreeView('focusTime.meetings', {
+        treeDataProvider: meetingsTreeProvider
+    });
+    context.subscriptions.push(meetingsTreeView);
+
     context.subscriptions.push(
-        vscode.window.registerTreeDataProvider('focusTime.meetings', meetingsTreeProvider),
         vscode.window.registerTreeDataProvider('focusTime.relatedDocuments', documentsTreeProvider)
     );
 
+    // Update tree view description with current model
+    updateModelDescription();
+
     // Register chat participant
-    new FocusTimeChatParticipant(context, meetingService, focusSessionManager);
+    new FocusTimeChatParticipant(context, meetingService, modelSelector);
 
     // Register language model tools
-    registerTools(context, meetingService, focusSessionManager);
+    registerTools(context, meetingService);
+
+    // Check if Work IQ MCP server is available and offer to install if not
+    checkAndOfferWorkIQInstall();
 
     // Register commands
     registerCommands(
         context, 
         meetingsTreeProvider, 
-        documentsTreeProvider
+        documentsTreeProvider,
+        modelSelector
     );
 
     // Start services
@@ -89,7 +101,6 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         meetingService,
         documentService,
-        focusSessionManager,
         notificationManager,
         statusBarManager,
         new vscode.Disposable(() => {
@@ -100,15 +111,14 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     log('Focus Time extension activated successfully');
-    vscode.window.showInformationMessage(
-        'Focus Time is active! Use @focus in chat or click the status bar to get started.'
-    );
+    vscode.window.showInformationMessage('Focus Time is active! Use @focus in chat or check the sidebar.');
 }
 
 function registerCommands(
     context: vscode.ExtensionContext,
     meetingsTreeProvider: MeetingsTreeDataProvider,
-    documentsTreeProvider: DocumentsTreeDataProvider
+    documentsTreeProvider: DocumentsTreeDataProvider,
+    modelSelector: ModelSelector
 ): void {
     // Show meetings command
     context.subscriptions.push(
@@ -116,7 +126,7 @@ function registerCommands(
             const meetings = meetingService.getCachedMeetings();
             
             if (meetings.length === 0) {
-                vscode.window.showInformationMessage('No upcoming meetings. Enjoy your focus time!');
+                vscode.window.showInformationMessage('No upcoming meetings.');
                 return;
             }
 
@@ -166,88 +176,6 @@ function registerCommands(
         })
     );
 
-    // Toggle Do Not Disturb command
-    context.subscriptions.push(
-        vscode.commands.registerCommand('focusTime.toggleDoNotDisturb', async () => {
-            const session = focusSessionManager.getCurrentSession();
-            if (session?.isActive) {
-                await focusSessionManager.disableDoNotDisturb();
-            } else {
-                await focusSessionManager.enableDoNotDisturb();
-            }
-        })
-    );
-
-    // Start focus session command
-    context.subscriptions.push(
-        vscode.commands.registerCommand('focusTime.startFocusSession', async () => {
-            const currentSession = focusSessionManager.getCurrentSession();
-            if (currentSession?.isActive) {
-                const action = await vscode.window.showWarningMessage(
-                    `Focus session already active (${currentSession.remainingMinutes}m remaining)`,
-                    'Extend 15m',
-                    'Stop Session'
-                );
-                if (action === 'Extend 15m') {
-                    await focusSessionManager.extendSession(15);
-                } else if (action === 'Stop Session') {
-                    await focusSessionManager.stopSession();
-                }
-                return;
-            }
-
-            const durations: vscode.QuickPickItem[] = [
-                { label: '15 minutes', description: 'Quick focus session' },
-                { label: '30 minutes', description: 'Short focus session' },
-                { label: '45 minutes', description: 'Standard focus session' },
-                { label: '60 minutes', description: 'Deep work session' },
-                { label: 'Until next meeting', description: 'Automatically calculated' },
-                { label: 'Custom...', description: 'Enter a custom duration' }
-            ];
-
-            const selected = await vscode.window.showQuickPick(durations, {
-                placeHolder: 'Select focus session duration',
-                title: 'Start Focus Session'
-            });
-
-            if (!selected) {
-                return;
-            }
-
-            let duration: number | undefined;
-
-            if (selected.label === 'Custom...') {
-                const input = await vscode.window.showInputBox({
-                    prompt: 'Enter focus duration in minutes',
-                    placeHolder: '45',
-                    validateInput: (value) => {
-                        const num = parseInt(value, 10);
-                        if (isNaN(num) || num < 1 || num > 480) {
-                            return 'Please enter a number between 1 and 480';
-                        }
-                        return null;
-                    }
-                });
-                if (input) {
-                    duration = parseInt(input, 10);
-                } else {
-                    return;
-                }
-            } else if (selected.label !== 'Until next meeting') {
-                duration = parseInt(selected.label, 10);
-            }
-
-            await focusSessionManager.startSession(duration);
-        })
-    );
-
-    // Stop focus session command
-    context.subscriptions.push(
-        vscode.commands.registerCommand('focusTime.stopFocusSession', async () => {
-            await focusSessionManager.stopSession();
-        })
-    );
-
     // Join meeting command
     context.subscriptions.push(
         vscode.commands.registerCommand('focusTime.joinMeeting', async (arg?: Meeting | { meeting?: Meeting }) => {
@@ -280,6 +208,21 @@ function registerCommands(
             vscode.commands.executeCommand('workbench.action.openSettings', 'focusTime');
         })
     );
+
+    // Select model command - also update description after selection
+    context.subscriptions.push(
+        vscode.commands.registerCommand('focusTime.selectModel', async () => {
+            await modelSelector.showModelPicker();
+            updateModelDescription();
+        })
+    );
+
+    // Configure Work IQ command
+    context.subscriptions.push(
+        vscode.commands.registerCommand('focusTime.configureWorkIQ', () => {
+            addWorkIQToSettings();
+        })
+    );
 }
 
 async function refreshMeetings(): Promise<void> {
@@ -293,6 +236,12 @@ async function refreshMeetings(): Promise<void> {
 }
 
 async function refreshDocuments(): Promise<void> {
+    // Skip if no workspace folder is open
+    if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+        log('No workspace folder open, skipping document refresh');
+        return;
+    }
+    
     log('Refreshing related documents...');
     try {
         await documentService.fetchRelatedDocuments();
@@ -327,6 +276,96 @@ function formatTime(date: Date): string {
 
 function getMinutesUntil(date: Date): number {
     return Math.round((date.getTime() - Date.now()) / (1000 * 60));
+}
+
+/**
+ * Updates the meetings tree view description with the current model name
+ */
+async function updateModelDescription(): Promise<void> {
+    try {
+        const model = await modelSelector.getConfiguredModel();
+        const modelName = model?.name || model?.family || 'No model';
+        meetingsTreeView.description = `Using ${modelName}`;
+    } catch (error) {
+        log(`Failed to update model description: ${error}`);
+    }
+}
+
+/**
+ * Checks if Work IQ MCP server is available and offers to install it if not.
+ * Adds the server configuration to user settings when user accepts.
+ */
+async function checkAndOfferWorkIQInstall(): Promise<void> {
+    // Check if Work IQ tool is already available
+    const workIQAvailable = vscode.lm.tools.some(tool => {
+        const name = tool.name.toLowerCase();
+        return name.includes('workiq') || name.includes('work_iq');
+    });
+    
+    if (workIQAvailable) {
+        log('Work IQ MCP server is available');
+        return;
+    }
+    
+    log('Work IQ MCP server not found, checking user settings...');
+    
+    // Check if already configured in user settings
+    const config = vscode.workspace.getConfiguration('mcp');
+    const servers = config.get<Record<string, unknown>>('servers', {});
+    
+    if (servers['workiq']) {
+        log('Work IQ already configured in user settings (may need to be started)');
+        return;
+    }
+    
+    // Prompt user to install
+    const choice = await vscode.window.showInformationMessage(
+        'Focus Time requires the Work IQ MCP server to access your Microsoft 365 calendar. Would you like to add it to your settings?',
+        'Yes, add Work IQ',
+        'No thanks'
+    );
+    
+    if (choice === 'Yes, add Work IQ') {
+        await addWorkIQToSettings();
+    }
+}
+
+/**
+ * Adds the Work IQ MCP server configuration to user settings.
+ */
+async function addWorkIQToSettings(): Promise<void> {
+    try {
+        const config = vscode.workspace.getConfiguration('mcp');
+        const servers = config.get<Record<string, unknown>>('servers', {});
+        
+        // Add Work IQ server configuration
+        const updatedServers = {
+            ...servers,
+            'workiq': {
+                'command': 'npx',
+                'args': ['-y', '@microsoft/workiq', 'mcp'],
+                'env': {
+                    'npm_config_registry': 'https://registry.npmjs.org'
+                }
+            }
+        };
+        
+        await config.update('servers', updatedServers, vscode.ConfigurationTarget.Global);
+        
+        log('Work IQ MCP server added to user settings');
+        
+        vscode.window.showInformationMessage(
+            'Work IQ MCP server added! You may need to reload VS Code and start the server.',
+            'Reload Window'
+        ).then(selection => {
+            if (selection === 'Reload Window') {
+                vscode.commands.executeCommand('workbench.action.reloadWindow');
+            }
+        });
+    } catch (error) {
+        log(`Failed to add Work IQ to settings: ${error}`);
+        vscode.window.showErrorMessage(`Failed to configure Work IQ: ${error}`);
+    }
 }
 
 function log(message: string): void {

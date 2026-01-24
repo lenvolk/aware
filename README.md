@@ -2,6 +2,45 @@
 
 AI-powered focus time manager for VS Code that integrates with Microsoft 365 to track your meetings and help you stay focused.
 
+## Prerequisites
+
+This extension requires:
+
+1. **GitHub Copilot** - Active subscription with the GitHub Copilot extension installed
+2. **Microsoft 365 Copilot License** - Required for each user accessing Work IQ
+3. **Work IQ MCP Server** - Must be configured in VS Code (see setup below)
+4. **Admin Consent** - Your organization's admin must grant consent for Work IQ ([Admin Guide](https://github.com/microsoft/work-iq-mcp/blob/main/ADMIN-INSTRUCTIONS.md))
+
+### Work IQ MCP Server Setup
+
+The extension uses [Microsoft Work IQ](https://github.com/microsoft/work-iq-mcp) to access your Microsoft 365 calendar data.
+
+**Quick Install (recommended):**
+
+[Install Work IQ in VS Code](https://vscode.dev/redirect/mcp/install?name=workiq&config=%7B%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40microsoft%2Fworkiq%22%2C%22mcp%22%5D%7D)
+
+**Manual Configuration:**
+
+Add to your VS Code MCP settings:
+
+```json
+{
+  "workiq": {
+    "command": "npx",
+    "args": ["-y", "@microsoft/workiq", "mcp"]
+  }
+}
+```
+
+**First-time setup:**
+
+```bash
+# Accept the EULA (required on first use)
+npx @microsoft/workiq accept-eula
+```
+
+> **Note:** Work IQ is in Public Preview. Features and APIs may change.
+
 ## Features
 
 ### Meeting Awareness
@@ -34,8 +73,13 @@ AI-powered focus time manager for VS Code that integrates with Microsoft 365 to 
 
 ## Requirements
 
-- **Work IQ MCP Server**: You must have the Work IQ MCP server configured and connected to your Microsoft 365 account
-- **GitHub Copilot**: Required for the chat participant and language model tools features
+| Requirement | Details |
+|-------------|--------|
+| VS Code | 1.108.1 or later |
+| GitHub Copilot | Required for chat participant and language model tools |
+| Microsoft 365 Copilot | License required for Work IQ access |
+| Work IQ MCP Server | See [Prerequisites](#prerequisites) for setup |
+| Node.js | Required for npx to run Work IQ |
 
 ## Extension Settings
 
@@ -78,14 +122,27 @@ This extension contributes the following settings:
 ## Platform Support
 
 ### Do Not Disturb Implementation
-- **Windows**: Opens Focus Assist settings (requires manual toggle)
-- **macOS**: Uses Shortcuts app to toggle Do Not Disturb
+- **Windows 11**: Uses PowerShell UI Automation to toggle Focus Assist automatically. Falls back to opening Quick Settings if automation fails.
+- **macOS (Monterey+)**: Uses Shortcuts app to toggle Do Not Disturb
 - **Linux (GNOME)**: Uses gsettings to disable notification banners
 
 ## Known Issues
 
-- Direct Work IQ MCP tool invocation requires an active Copilot Chat context; the extension falls back to model-based queries when used outside chat
+- Work IQ requires a Microsoft 365 Copilot license; the extension will show an error if the MCP server is not configured
 - Some meeting properties may not be available depending on your Microsoft 365 configuration
+- Windows 11 DND automation may require running VS Code with appropriate permissions
+
+## Troubleshooting
+
+**"Work IQ MCP server not available" error:**
+1. Ensure Work IQ is installed: `npx @microsoft/workiq version`
+2. Accept the EULA: `npx @microsoft/workiq accept-eula`
+3. Verify MCP configuration in VS Code settings
+4. Check that your organization has granted admin consent
+
+**Meetings not loading:**
+1. Verify your Microsoft 365 Copilot license is active
+2. Try running `npx @microsoft/workiq ask -q "What are my meetings today?"` in terminal to test
 
 ## Release Notes
 

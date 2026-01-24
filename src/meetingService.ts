@@ -29,6 +29,7 @@ export class MeetingService {
             
             if (response.error) {
                 this.log(`Error from Work IQ: ${response.error}`);
+                this._onMeetingsUpdated.fire(this.meetings); // Fire event to clear loading state
                 return this.meetings;
             }
             
@@ -44,16 +45,19 @@ export class MeetingService {
                 for (const m of parsed) {
                     this.log(`  - "${m.title}" starts: ${m.startTime.toISOString()}, status: ${m.status}`);
                 }
-                if (parsed.length > 0) {
-                    this.meetings = parsed;
-                    this.lastRefresh = new Date();
-                    this._onMeetingsUpdated.fire(this.meetings);
-                }
+                // Always update meetings (even if empty) and fire event to clear loading state
+                this.meetings = parsed;
+                this.lastRefresh = new Date();
+                this._onMeetingsUpdated.fire(this.meetings);
+            } else {
+                // No response data - still fire event to clear loading state
+                this._onMeetingsUpdated.fire(this.meetings);
             }
             
             return this.meetings;
         } catch (error) {
             this.log(`Failed to fetch meetings: ${error}`);
+            this._onMeetingsUpdated.fire(this.meetings); // Fire event to clear loading state on error
             throw error;
         }
     }
@@ -90,7 +94,12 @@ export class MeetingService {
             
             if (!workIQTool) {
                 this.log('Work IQ tool not found among available tools');
-                return { error: 'Work IQ MCP server not available. Please ensure it is configured and connected.' };
+                this.log('The Work IQ MCP server may need to be started. Users can:');
+                this.log('  1. Run "MCP: List Servers" command and start "workiq"');
+                this.log('  2. Or use @focus in chat which will trigger the server');
+                return { 
+                    error: 'Work IQ MCP server not connected. Please open the MCP Servers panel in VS Code and ensure the "workiq" server is running.' 
+                };
             }
             
             this.log(`Found Work IQ tool: ${workIQTool.name}`);

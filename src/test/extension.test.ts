@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import { getConfig, isWithinWorkingHours } from '../config';
-import { Meeting, FocusSession } from '../types';
+import { Meeting } from '../types';
 
 suite('Focus Time Extension Test Suite', () => {
 	vscode.window.showInformationMessage('Start Focus Time tests.');
@@ -13,7 +13,6 @@ suite('Focus Time Extension Test Suite', () => {
 	test('getConfig returns valid configuration', () => {
 		const config = getConfig();
 		assert.ok(typeof config.meetingReminderMinutes === 'number');
-		assert.ok(typeof config.autoEnableDoNotDisturb === 'boolean');
 		assert.ok(typeof config.refreshIntervalMinutes === 'number');
 		assert.ok(typeof config.showStatusBar === 'boolean');
 		assert.ok(typeof config.enableNotifications === 'boolean');
@@ -41,29 +40,12 @@ suite('Focus Time Extension Test Suite', () => {
 		assert.ok(meeting.endTime instanceof Date);
 	});
 
-	test('FocusSession type should have required properties', () => {
-		const session: FocusSession = {
-			id: 'session-1',
-			startTime: new Date(),
-			duration: 25,
-			remainingMinutes: 25,
-			isActive: true
-		};
-		
-		assert.ok(session.startTime instanceof Date);
-		assert.strictEqual(session.isActive, true);
-		assert.strictEqual(session.duration, 25);
-	});
-
 	test('Commands should be registered', async () => {
 		const commands = await vscode.commands.getCommands(true);
 		
 		const expectedCommands = [
 			'focusTime.showMeetings',
 			'focusTime.refreshMeetings',
-			'focusTime.toggleDoNotDisturb',
-			'focusTime.startFocusSession',
-			'focusTime.stopFocusSession',
 			'focusTime.openSettings'
 		];
 		
