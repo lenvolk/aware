@@ -126,7 +126,7 @@
         {
           "id": "aware",
           "title": "Aware",
-          "icon": "$(clock)"
+          "icon": "$(bell)"
         }
       ]
     },

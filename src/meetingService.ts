@@ -4,7 +4,7 @@
  */
 
 import * as vscode from 'vscode';
-import { Meeting, TimeRange, WorkIQResponse } from './types';
+import { Meeting, TimeRange, WorkIQResponse, WorkIQConnectionState, WorkIQConnectionStatus } from './types';
 
 export class MeetingService {
     private meetings: Meeting[] = [];
@@ -14,6 +14,12 @@ export class MeetingService {
     readonly onMeetingsUpdated = this._onMeetingsUpdated.event;
     private _onLoadingStarted = new vscode.EventEmitter<void>();
     readonly onLoadingStarted = this._onLoadingStarted.event;
+    private _onConnectionStateChanged = new vscode.EventEmitter<WorkIQConnectionStatus>();
+    readonly onConnectionStateChanged = this._onConnectionStateChanged.event;
+    private connectionStatus: WorkIQConnectionStatus = {
+        state: 'not_configured',
+        message: 'Checking Work IQ connection...'
+    };
 
     constructor(outputChannel: vscode.OutputChannel) {
         this.outputChannel = outputChannel;
@@ -83,6 +89,11 @@ export class MeetingService {
             // Log all available tools for debugging
             this.log(`Available LM tools (${vscode.lm.tools.length}): ${vscode.lm.tools.map(t => t.name).join(', ')}`);
             
+            // Check if MCP is configured in settings
+            const mcpConfig = vscode.workspace.getConfiguration('mcp');
+            const servers = mcpConfig.get<Record<string, unknown>>('servers', {});
+            const isConfigured = !!servers['workiq'];
+            
             // Find the Work IQ MCP tool - check for various naming patterns
             const workIQTool = vscode.lm.tools.find(tool => {
                 const name = tool.name.toLowerCase();
@@ -94,12 +105,30 @@ export class MeetingService {
             
             if (!workIQTool) {
                 this.log('Work IQ tool not found among available tools');
-                this.log('The Work IQ MCP server may need to be started. Users can:');
-                this.log('  1. Run "MCP: List Servers" command and start "workiq"');
-                this.log('  2. Or use @focus in chat which will trigger the server');
-                return { 
-                    error: 'Work IQ MCP server not connected. Please open the MCP Servers panel in VS Code and ensure the "workiq" server is running.' 
-                };
+                
+                if (!isConfigured) {
+                    // Not configured at all
+                    this.updateConnectionState({
+                        state: 'not_configured',
+                        message: 'Work IQ MCP server not configured',
+                        actionLabel: 'Add Work IQ',
+                        actionCommand: 'aware.configureWorkIQ'
+                    });
+                    return { 
+                        error: 'Work IQ MCP server not configured. Click "Add Work IQ" to set it up.' 
+                    };
+                } else {
+                    // Configured but not running
+                    this.updateConnectionState({
+                        state: 'not_started',
+                        message: 'Work IQ server not running',
+                        actionLabel: 'Start Server',
+                        actionCommand: 'aware.startWorkIQ'
+                    });
+                    return { 
+                        error: 'Work IQ MCP server not running. Open the MCP Servers panel and start the "workiq" server.' 
+                    };
+                }
             }
             
             this.log(`Found Work IQ tool: ${workIQTool.name}`);
@@ -128,14 +157,132 @@ export class MeetingService {
             
             this.log(`Work IQ response received (${fullResponse.length} chars):`);
             this.log(fullResponse.substring(0, 500) + (fullResponse.length > 500 ? '...' : ''));
+            
+            // Check for common error patterns in response
+            const errorState = this.detectErrorInResponse(fullResponse);
+            if (errorState) {
+                this.updateConnectionState(errorState);
+                return { error: errorState.message, rawResponse: fullResponse };
+            }
+            
+            // Success!
+            this.updateConnectionState({
+                state: 'connected',
+                message: 'Connected to Work IQ'
+            });
+            
             return { rawResponse: fullResponse };
         } catch (error) {
             this.log(`Work IQ query error: ${error}`);
             if (error instanceof Error) {
                 this.log(`Error stack: ${error.stack}`);
             }
-            return { error: String(error), rawResponse: '' };
+            
+            // Classify the error
+            const errorState = this.classifyError(error);
+            this.updateConnectionState(errorState);
+            
+            return { error: errorState.message, rawResponse: '' };
         }
+    }
+    
+    /**
+     * Detect common error patterns in Work IQ responses
+     */
+    private detectErrorInResponse(response: string): WorkIQConnectionStatus | null {
+        const responseLower = response.toLowerCase();
+        
+        // License issues
+        if (responseLower.includes('license') || responseLower.includes('not licensed') || 
+            responseLower.includes('copilot license')) {
+            return {
+                state: 'license_required',
+                message: 'Microsoft 365 Copilot license required. Contact your IT administrator.',
+                actionLabel: 'Learn More',
+                actionCommand: 'aware.openSettings'
+            };
+        }
+        
+        // Admin consent issues
+        if (responseLower.includes('admin consent') || responseLower.includes('administrator') ||
+            responseLower.includes('organization') && responseLower.includes('consent')) {
+            return {
+                state: 'admin_consent',
+                message: 'Organization admin consent required for Work IQ. See documentation for setup.',
+                actionLabel: 'View Setup Guide',
+                actionCommand: 'aware.openSettings'
+            };
+        }
+        
+        // Authentication issues
+        if (responseLower.includes('sign in') || responseLower.includes('authenticate') ||
+            responseLower.includes('not authenticated') || responseLower.includes('login')) {
+            return {
+                state: 'auth_required',
+                message: 'Please sign in to Microsoft 365 to access your calendar.',
+                actionLabel: 'Retry',
+                actionCommand: 'aware.refreshMeetings'
+            };
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Classify errors into actionable categories
+     */
+    private classifyError(error: unknown): WorkIQConnectionStatus {
+        const errorStr = String(error).toLowerCase();
+        
+        if (errorStr.includes('license')) {
+            return {
+                state: 'license_required',
+                message: 'Microsoft 365 Copilot license required',
+                actionLabel: 'Learn More',
+                actionCommand: 'aware.openSettings'
+            };
+        }
+        
+        if (errorStr.includes('consent') || errorStr.includes('permission')) {
+            return {
+                state: 'admin_consent',
+                message: 'Admin consent required for Work IQ',
+                actionLabel: 'View Setup Guide',
+                actionCommand: 'aware.openSettings'
+            };
+        }
+        
+        if (errorStr.includes('auth') || errorStr.includes('sign in') || errorStr.includes('token')) {
+            return {
+                state: 'auth_required',
+                message: 'Authentication required',
+                actionLabel: 'Retry',
+                actionCommand: 'aware.refreshMeetings'
+            };
+        }
+        
+        return {
+            state: 'unknown_error',
+            message: `Error: ${String(error).substring(0, 100)}`,
+            actionLabel: 'Retry',
+            actionCommand: 'aware.refreshMeetings'
+        };
+    }
+    
+    /**
+     * Update connection state and notify listeners
+     */
+    private updateConnectionState(status: WorkIQConnectionStatus): void {
+        this.connectionStatus = status;
+        this._onConnectionStateChanged.fire(status);
+        this.log(`Connection state: ${status.state} - ${status.message}`);
+    }
+    
+    /**
+     * Get current connection status
+     */
+    getConnectionStatus(): WorkIQConnectionStatus {
+        return this.connectionStatus;
     }
 
     private parseWorkIQTextResponse(response: string): Meeting[] {
@@ -349,5 +496,7 @@ export class MeetingService {
 
     dispose(): void {
         this._onMeetingsUpdated.dispose();
+        this._onLoadingStarted.dispose();
+        this._onConnectionStateChanged.dispose();
     }
 }

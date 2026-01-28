@@ -151,12 +151,11 @@ export class ModelSelector {
             const isPremium = this.isPremiumModel(pick.modelFamily || '');
             const modelName = pick.label.replace(/^\$\([^)]+\)\s*/, '');
             
+            // Only warn about premium models since that affects quota
             if (isPremium) {
                 vscode.window.showWarningMessage(
-                    `Model set to ${modelName}. This is a premium model and will count against your Copilot quota.`
+                    `${modelName} is a premium model and will count against your Copilot quota.`
                 );
-            } else {
-                vscode.window.showInformationMessage(`Model set to ${modelName}`);
             }
         }
     }

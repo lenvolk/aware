@@ -54,9 +54,6 @@ export class AwareChatParticipant {
             const model = await this.modelSelector.getConfiguredModel();
             if (model) {
                 this.model = model;
-                console.log(`[Aware] Selected model: ${this.model.id}`);
-            } else {
-                console.log('[Aware] No model available, will use request.model as fallback');
             }
         } catch (error) {
             console.error('[Aware] Error selecting model:', error);
@@ -108,6 +105,16 @@ export class AwareChatParticipant {
         }
 
         await this.meetingService.fetchMeetings(timeRange);
+        
+        // Check connection status first
+        const connectionStatus = this.meetingService.getConnectionStatus();
+        if (connectionStatus.state !== 'connected') {
+            stream.markdown(`⚠️ **${this.getConnectionErrorTitle(connectionStatus.state)}**\n\n`);
+            stream.markdown(`${connectionStatus.message}\n\n`);
+            stream.markdown(this.getConnectionErrorHelp(connectionStatus.state));
+            return { metadata: { command: 'meetings', error: connectionStatus.state } };
+        }
+        
         const meetings = this.meetingService.getCachedMeetings();
 
         if (meetings.length === 0) {
@@ -134,10 +141,53 @@ export class AwareChatParticipant {
 
         return { metadata: { command: 'meetings' } };
     }
+    
+    private getConnectionErrorTitle(state: string): string {
+        switch (state) {
+            case 'not_configured':
+                return 'Work IQ Not Configured';
+            case 'not_started':
+                return 'Work IQ Server Not Running';
+            case 'license_required':
+                return 'Microsoft 365 Copilot License Required';
+            case 'admin_consent':
+                return 'Admin Consent Required';
+            case 'auth_required':
+                return 'Authentication Required';
+            default:
+                return 'Connection Error';
+        }
+    }
+    
+    private getConnectionErrorHelp(state: string): string {
+        switch (state) {
+            case 'not_configured':
+                return 'Run the command **"Aware: Add Work IQ MCP Server"** to configure Work IQ, then reload VS Code.';
+            case 'not_started':
+                return 'Open the **MCP Servers panel** (View → MCP Servers) and start the "workiq" server.';
+            case 'license_required':
+                return 'Aware requires a **Microsoft 365 Copilot license** to access your calendar. Contact your IT administrator.';
+            case 'admin_consent':
+                return 'Your organization admin must grant consent for Work IQ. See the [Admin Guide](https://github.com/microsoft/work-iq-mcp/blob/main/ADMIN-INSTRUCTIONS.md).';
+            case 'auth_required':
+                return 'Please sign in to Microsoft 365 when prompted, then try again.';
+            default:
+                return 'Try refreshing with **"Aware: Refresh Meetings"** or check the Aware output channel for details.';
+        }
+    }
 
     private async handleNextCommand(
         stream: vscode.ChatResponseStream
     ): Promise<vscode.ChatResult> {
+        // Check connection status first
+        const connectionStatus = this.meetingService.getConnectionStatus();
+        if (connectionStatus.state !== 'connected') {
+            stream.markdown(`⚠️ **${this.getConnectionErrorTitle(connectionStatus.state)}**\n\n`);
+            stream.markdown(`${connectionStatus.message}\n\n`);
+            stream.markdown(this.getConnectionErrorHelp(connectionStatus.state));
+            return { metadata: { command: 'next', error: connectionStatus.state } };
+        }
+        
         const nextMeeting = this.meetingService.getNextMeeting();
 
         if (!nextMeeting) {
@@ -206,8 +256,6 @@ Respond with ONLY the category name, nothing else.`;
                 return this.handleNextCommand(stream);
             }
         } catch (error) {
-            console.log('[Aware] LLM classification failed, falling back to keyword matching:', error);
-            
             // Fallback to simple keyword matching
             if (prompt.includes('meeting') || prompt.includes('calendar')) {
                 return this.handleMeetingsCommand(request, stream, token);

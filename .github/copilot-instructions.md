@@ -103,6 +103,7 @@ The extension detects if Work IQ is available and prompts users to install it if
 
 - **Source**: https://github.com/microsoft/work-iq-mcp
 - **Command**: `aware.configureWorkIQ` - Manually add Work IQ to settings
+- **Prompt dismissal**: The installation prompt includes a "Don't ask again" option that persists to `globalState` under key `aware.workiqPromptDismissed`
 
 After installation, users need to start the MCP server. The tool `mcp_workiq_ask_work_iq` will then appear in `vscode.lm.tools`.
 
@@ -171,3 +172,4 @@ npm run lint       # Lint code
 - The MCP tool name is `mcp_workiq_ask_work_iq` - use `vscode.lm.invokeTool()` to invoke it
 - Chat participant requires GitHub Copilot extension
 - Language model tools require `name`, `displayName`, `description`, `modelDescription`, and `toolReferenceName` when `canBeReferencedInPrompt` is true
+- **No `console.log` in production code** - Debug statements should be removed before publishing

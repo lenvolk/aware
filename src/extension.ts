@@ -66,7 +66,7 @@ export function activate(context: vscode.ExtensionContext) {
     registerTools(context, meetingService);
 
     // Check if Work IQ MCP server is available and offer to install if not
-    checkAndOfferWorkIQInstall();
+    checkAndOfferWorkIQInstall(context);
 
     // Register commands
     registerCommands(
@@ -111,7 +111,8 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     log('Aware extension activated successfully');
-    vscode.window.showInformationMessage('Aware is active! Use @aware in chat or check the sidebar.');
+    // Activation message is now shown only if Work IQ connects successfully
+    // The tree view will show status/instructions if there are issues
 }
 
 function registerCommands(
@@ -163,7 +164,6 @@ function registerCommands(
         vscode.commands.registerCommand('aware.refreshMeetings', async () => {
             await refreshMeetings();
             meetingsTreeProvider.refresh();
-            vscode.window.showInformationMessage('Meetings refreshed!');
         })
     );
 
@@ -172,7 +172,6 @@ function registerCommands(
         vscode.commands.registerCommand('aware.refreshDocuments', async () => {
             await refreshDocuments();
             documentsTreeProvider.refresh();
-            vscode.window.showInformationMessage('Related documents refreshed!');
         })
     );
 
@@ -219,8 +218,23 @@ function registerCommands(
 
     // Configure Work IQ command
     context.subscriptions.push(
-        vscode.commands.registerCommand('aware.configureWorkIQ', () => {
-            addWorkIQToSettings();
+        vscode.commands.registerCommand('aware.configureWorkIQ', async () => {
+            log('Configure Work IQ command triggered');
+            await addWorkIQToSettings();
+        })
+    );
+
+    // Start Work IQ server command (wraps VS Code command and refreshes after)
+    context.subscriptions.push(
+        vscode.commands.registerCommand('aware.startWorkIQ', async () => {
+            log('Starting Work IQ server...');
+            await vscode.commands.executeCommand('workbench.mcp.startServer', 'mcp.config.user.workiq');
+            
+            // Give the server time to start, then refresh
+            setTimeout(async () => {
+                log('Refreshing after server start...');
+                await refreshMeetings();
+            }, 3000);
         })
     );
 }
@@ -295,7 +309,15 @@ async function updateModelDescription(): Promise<void> {
  * Checks if Work IQ MCP server is available and offers to install it if not.
  * Adds the server configuration to user settings when user accepts.
  */
-async function checkAndOfferWorkIQInstall(): Promise<void> {
+async function checkAndOfferWorkIQInstall(context: vscode.ExtensionContext): Promise<void> {
+    const WORKIQ_PROMPT_DISMISSED_KEY = 'aware.workiqPromptDismissed';
+    
+    // Check if user has dismissed the prompt permanently
+    if (context.globalState.get<boolean>(WORKIQ_PROMPT_DISMISSED_KEY)) {
+        log('Work IQ prompt was previously dismissed by user');
+        return;
+    }
+    
     // Check if Work IQ tool is already available
     const workIQAvailable = vscode.lm.tools.some(tool => {
         const name = tool.name.toLowerCase();
@@ -322,11 +344,15 @@ async function checkAndOfferWorkIQInstall(): Promise<void> {
     const choice = await vscode.window.showInformationMessage(
         'Aware requires the Work IQ MCP server to access your Microsoft 365 calendar. Would you like to add it to your settings?',
         'Yes, add Work IQ',
+        "Don't ask again",
         'No thanks'
     );
     
     if (choice === 'Yes, add Work IQ') {
         await addWorkIQToSettings();
+    } else if (choice === "Don't ask again") {
+        await context.globalState.update(WORKIQ_PROMPT_DISMISSED_KEY, true);
+        log('User dismissed Work IQ prompt permanently');
     }
 }
 
@@ -334,9 +360,11 @@ async function checkAndOfferWorkIQInstall(): Promise<void> {
  * Adds the Work IQ MCP server configuration to user settings.
  */
 async function addWorkIQToSettings(): Promise<void> {
+    log('addWorkIQToSettings called');
     try {
         const config = vscode.workspace.getConfiguration('mcp');
         const servers = config.get<Record<string, unknown>>('servers', {});
+        log(`Current mcp.servers: ${JSON.stringify(servers)}`);
         
         // Add Work IQ server configuration
         const updatedServers = {
@@ -350,18 +378,19 @@ async function addWorkIQToSettings(): Promise<void> {
             }
         };
         
+        log('Updating mcp.servers configuration...');
         await config.update('servers', updatedServers, vscode.ConfigurationTarget.Global);
         
         log('Work IQ MCP server added to user settings');
         
-        vscode.window.showInformationMessage(
-            'Work IQ MCP server added! You may need to reload VS Code and start the server.',
-            'Reload Window'
-        ).then(selection => {
-            if (selection === 'Reload Window') {
-                vscode.commands.executeCommand('workbench.action.reloadWindow');
-            }
-        });
+        // Server starts automatically after config update - wait a moment then refresh
+        vscode.window.showInformationMessage('Work IQ MCP server added! Starting server...');
+        
+        // Give the server time to start, then refresh the UI
+        setTimeout(async () => {
+            log('Refreshing after WorkIQ setup...');
+            await refreshMeetings();
+        }, 3000);
     } catch (error) {
         log(`Failed to add Work IQ to settings: ${error}`);
         vscode.window.showErrorMessage(`Failed to configure Work IQ: ${error}`);

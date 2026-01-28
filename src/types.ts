@@ -38,6 +38,26 @@ export interface WorkIQResponse {
     rawResponse?: string;
 }
 
+/**
+ * Connection state for Work IQ integration
+ */
+export type WorkIQConnectionState = 
+    | 'connected'           // Work IQ is available and working
+    | 'not_configured'      // MCP server not in settings
+    | 'not_started'         // MCP server configured but not running
+    | 'license_required'    // M365 Copilot license issue
+    | 'admin_consent'       // Organization admin consent needed
+    | 'auth_required'       // User needs to authenticate
+    | 'unknown_error';      // Other error
+
+export interface WorkIQConnectionStatus {
+    state: WorkIQConnectionState;
+    message: string;
+    actionLabel?: string;
+    actionCommand?: string;
+    actionArgs?: unknown[];
+}
+
 export interface RelatedDocument {
     id: string;
     title: string;

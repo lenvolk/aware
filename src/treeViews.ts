@@ -3,16 +3,17 @@
  */
 
 import * as vscode from 'vscode';
-import { Meeting, RelatedDocument } from './types';
+import { Meeting, RelatedDocument, WorkIQConnectionStatus } from './types';
 import { MeetingService } from './meetingService';
 import { DocumentService } from './documentService';
 
-type MeetingTreeElement = MeetingCategoryItem | MeetingTreeItem | JoinMeetingItem;
+type MeetingTreeElement = MeetingCategoryItem | MeetingTreeItem | JoinMeetingItem | ConnectionStatusItem;
 
 export class MeetingsTreeDataProvider implements vscode.TreeDataProvider<MeetingTreeElement> {
     private _onDidChangeTreeData = new vscode.EventEmitter<MeetingTreeElement | undefined | void>();
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
     private isLoading = false;
+    private connectionStatus: WorkIQConnectionStatus | null = null;
 
     constructor(
         private meetingService: MeetingService
@@ -26,6 +27,13 @@ export class MeetingsTreeDataProvider implements vscode.TreeDataProvider<Meeting
         // Listen for loading start
         this.meetingService.onLoadingStarted(() => {
             this.isLoading = true;
+            this._onDidChangeTreeData.fire();
+        });
+        
+        // Listen for connection state changes
+        this.meetingService.onConnectionStateChanged((status) => {
+            this.connectionStatus = status;
+            this.isLoading = false;
             this._onDidChangeTreeData.fire();
         });
     }
@@ -62,6 +70,13 @@ export class MeetingsTreeDataProvider implements vscode.TreeDataProvider<Meeting
 
             if (this.isLoading) {
                 items.push(new MeetingTreeItem(null, 'loading'));
+                return Promise.resolve(items);
+            }
+            
+            // Show connection status if not connected
+            const status = this.connectionStatus || this.meetingService.getConnectionStatus();
+            if (status.state !== 'connected') {
+                items.push(new ConnectionStatusItem(status));
                 return Promise.resolve(items);
             }
 
@@ -118,6 +133,99 @@ export class JoinMeetingItem extends vscode.TreeItem {
         
         this.tooltip = new vscode.MarkdownString(`[Click to join **${meeting.title}**](${meeting.joinUrl})`);
         this.tooltip.isTrusted = true;
+    }
+}
+
+/**
+ * Tree item that shows Work IQ connection status with actionable fix
+ */
+export class ConnectionStatusItem extends vscode.TreeItem {
+    constructor(status: WorkIQConnectionStatus) {
+        super(ConnectionStatusItem.getLabelForState(status.state), vscode.TreeItemCollapsibleState.None);
+        
+        this.description = status.actionLabel || 'Click for help';
+        this.iconPath = ConnectionStatusItem.getIconForState(status.state);
+        this.contextValue = 'connectionStatus';
+        
+        // Set command to fix the issue
+        if (status.actionCommand) {
+            this.command = {
+                command: status.actionCommand,
+                title: status.actionLabel || 'Fix',
+                arguments: status.actionArgs || []
+            };
+        }
+        
+        // Build helpful tooltip
+        this.tooltip = new vscode.MarkdownString(
+            `**${ConnectionStatusItem.getLabelForState(status.state)}**\n\n` +
+            `${status.message}\n\n` +
+            ConnectionStatusItem.getHelpTextForState(status.state)
+        );
+        this.tooltip.isTrusted = true;
+    }
+    
+    private static getLabelForState(state: WorkIQConnectionStatus['state']): string {
+        switch (state) {
+            case 'not_configured':
+                return 'Work IQ not configured';
+            case 'not_started':
+                return 'Work IQ server not running';
+            case 'license_required':
+                return 'M365 Copilot license required';
+            case 'admin_consent':
+                return 'Admin consent required';
+            case 'auth_required':
+                return 'Sign in required';
+            case 'unknown_error':
+                return 'Connection error';
+            default:
+                return 'Checking connection...';
+        }
+    }
+    
+    private static getIconForState(state: WorkIQConnectionStatus['state']): vscode.ThemeIcon {
+        switch (state) {
+            case 'not_configured':
+                return new vscode.ThemeIcon('plug', new vscode.ThemeColor('charts.yellow'));
+            case 'not_started':
+                return new vscode.ThemeIcon('debug-disconnect', new vscode.ThemeColor('charts.orange'));
+            case 'license_required':
+                return new vscode.ThemeIcon('key', new vscode.ThemeColor('charts.red'));
+            case 'admin_consent':
+                return new vscode.ThemeIcon('shield', new vscode.ThemeColor('charts.red'));
+            case 'auth_required':
+                return new vscode.ThemeIcon('account', new vscode.ThemeColor('charts.yellow'));
+            case 'unknown_error':
+                return new vscode.ThemeIcon('warning', new vscode.ThemeColor('charts.red'));
+            default:
+                return new vscode.ThemeIcon('loading~spin');
+        }
+    }
+    
+    private static getHelpTextForState(state: WorkIQConnectionStatus['state']): string {
+        switch (state) {
+            case 'not_configured':
+                return '**Click to add** the Work IQ MCP server to your VS Code settings.\n\n' +
+                       'Work IQ connects to your Microsoft 365 calendar.';
+            case 'not_started':
+                return '**Click to open** the MCP Servers panel and start the "workiq" server.\n\n' +
+                       'After starting, you may need to authenticate with Microsoft.';
+            case 'license_required':
+                return 'Aware requires a **Microsoft 365 Copilot license** to access your calendar.\n\n' +
+                       'Contact your IT administrator to request access.';
+            case 'admin_consent':
+                return 'Your organization\'s admin must grant consent for Work IQ.\n\n' +
+                       'See the [Admin Guide](https://github.com/microsoft/work-iq-mcp/blob/main/ADMIN-INSTRUCTIONS.md) for setup instructions.';
+            case 'auth_required':
+                return 'Please sign in to Microsoft 365 when prompted.\n\n' +
+                       'Click **Retry** to try connecting again.';
+            case 'unknown_error':
+                return 'An unexpected error occurred.\n\n' +
+                       'Try refreshing or check the Aware output channel for details.';
+            default:
+                return '';
+        }
     }
 }
 
