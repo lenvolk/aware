@@ -1,7 +1,7 @@
 {
   "name": "aware",
   "displayName": "Aware",
-  "description": "AI-powered awareness manager that tracks your M365 meetings and helps you stay focused",
+  "description": "AI-powered awareness manager that tracks your M365 meetings and helps make sure you never miss an important event.",
   "version": "0.0.1",
   "publisher": "burkeholland",
   "license": "MIT",
@@ -96,7 +96,6 @@
           "default": "",
           "description": "Preferred language model for the Aware assistant. Leave empty to use the default model. Use the 'Aware: Select Model' command to see available models."
         },
-
         "aware.showStatusBar": {
           "type": "boolean",
           "default": true,
@@ -133,8 +132,9 @@
     "views": {
       "aware": [
         {
-          "id": "aware.meetings",
-          "name": "Upcoming Meetings"
+          "type": "webview",
+          "id": "aware.meetingsWebview",
+          "name": "Meetings"
         },
         {
           "id": "aware.relatedDocuments",
@@ -146,25 +146,18 @@
       "view/title": [
         {
           "command": "aware.selectModel",
-          "when": "view == aware.meetings",
+          "when": "view == aware.meetingsWebview",
           "group": "navigation@1"
         },
         {
           "command": "aware.refreshMeetings",
-          "when": "view == aware.meetings",
+          "when": "view == aware.meetingsWebview",
           "group": "navigation@2"
         },
         {
           "command": "aware.refreshDocuments",
           "when": "view == aware.relatedDocuments",
           "group": "navigation"
-        }
-      ],
-      "view/item/context": [
-        {
-          "command": "aware.joinMeeting",
-          "when": "view == aware.meetings && viewItem == meetingWithLink",
-          "group": "inline"
         }
       ]
     },
@@ -201,7 +194,11 @@
             "timeRange": {
               "type": "string",
               "description": "Time range to fetch meetings for: 'today', 'tomorrow', 'week'",
-              "enum": ["today", "tomorrow", "week"]
+              "enum": [
+                "today",
+                "tomorrow",
+                "week"
+              ]
             }
           }
         }
@@ -229,13 +226,16 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.108.1",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
-    "typescript-eslint": "^8.52.0",
+    "@types/vscode": "^1.108.1",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
     "eslint": "^9.39.2",
     "typescript": "^5.9.3",
-    "@vscode/test-cli": "^0.0.12",
-    "@vscode/test-electron": "^2.5.2"
+    "typescript-eslint": "^8.52.0"
+  },
+  "dependencies": {
+    "@vscode/codicons": "^0.0.44"
   }
 }

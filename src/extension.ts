@@ -9,10 +9,8 @@ import * as vscode from 'vscode';
 import { MeetingService } from './meetingService';
 import { NotificationManager } from './notificationManager';
 import { StatusBarManager } from './statusBar';
-import { 
-    MeetingsTreeDataProvider, 
-    DocumentsTreeDataProvider
-} from './treeViews';
+import { DocumentsTreeDataProvider } from './treeViews';
+import { MeetingsWebviewProvider } from './meetingsWebviewProvider';
 import { DocumentService } from './documentService';
 import { AwareChatParticipant } from './chatParticipant';
 import { ModelSelector } from './modelSelector';
@@ -26,7 +24,7 @@ let documentService: DocumentService;
 let notificationManager: NotificationManager;
 let statusBarManager: StatusBarManager;
 let modelSelector: ModelSelector;
-let meetingsTreeView: vscode.TreeView<unknown>;
+let meetingsWebviewProvider: MeetingsWebviewProvider;
 let refreshInterval: NodeJS.Timeout | null = null;
 
 export function activate(context: vscode.ExtensionContext) {
@@ -42,22 +40,20 @@ export function activate(context: vscode.ExtensionContext) {
     statusBarManager = new StatusBarManager(meetingService);
     modelSelector = new ModelSelector(outputChannel);
 
-    // Register tree views
-    const meetingsTreeProvider = new MeetingsTreeDataProvider(meetingService);
+    // Register webview provider for meetings
+    meetingsWebviewProvider = new MeetingsWebviewProvider(context.extensionUri, meetingService);
+    context.subscriptions.push(
+        vscode.window.registerWebviewViewProvider(
+            MeetingsWebviewProvider.viewType,
+            meetingsWebviewProvider
+        )
+    );
+
+    // Register tree view for documents
     const documentsTreeProvider = new DocumentsTreeDataProvider(documentService);
-
-    // Use createTreeView for meetings so we can update description
-    meetingsTreeView = vscode.window.createTreeView('aware.meetings', {
-        treeDataProvider: meetingsTreeProvider
-    });
-    context.subscriptions.push(meetingsTreeView);
-
     context.subscriptions.push(
         vscode.window.registerTreeDataProvider('aware.relatedDocuments', documentsTreeProvider)
     );
-
-    // Update tree view description with current model
-    updateModelDescription();
 
     // Register chat participant
     new AwareChatParticipant(context, meetingService, modelSelector);
@@ -70,8 +66,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Register commands
     registerCommands(
-        context, 
-        meetingsTreeProvider, 
+        context,
         documentsTreeProvider,
         modelSelector
     );
@@ -117,7 +112,6 @@ export function activate(context: vscode.ExtensionContext) {
 
 function registerCommands(
     context: vscode.ExtensionContext,
-    meetingsTreeProvider: MeetingsTreeDataProvider,
     documentsTreeProvider: DocumentsTreeDataProvider,
     modelSelector: ModelSelector
 ): void {
@@ -163,7 +157,7 @@ function registerCommands(
     context.subscriptions.push(
         vscode.commands.registerCommand('aware.refreshMeetings', async () => {
             await refreshMeetings();
-            meetingsTreeProvider.refresh();
+            meetingsWebviewProvider.refresh();
         })
     );
 
@@ -208,11 +202,10 @@ function registerCommands(
         })
     );
 
-    // Select model command - also update description after selection
+    // Select model command
     context.subscriptions.push(
         vscode.commands.registerCommand('aware.selectModel', async () => {
             await modelSelector.showModelPicker();
-            updateModelDescription();
         })
     );
 
@@ -224,17 +217,60 @@ function registerCommands(
         })
     );
 
-    // Start Work IQ server command (wraps VS Code command and refreshes after)
+    // Start Work IQ server command - opens MCP panel for user to start server
     context.subscriptions.push(
         vscode.commands.registerCommand('aware.startWorkIQ', async () => {
-            log('Starting Work IQ server...');
-            await vscode.commands.executeCommand('workbench.mcp.startServer', 'mcp.config.user.workiq');
+            log('Opening MCP servers panel...');
+            await vscode.commands.executeCommand('workbench.mcp.listServer');
+        })
+    );
+
+    // Copy EULA command to clipboard
+    context.subscriptions.push(
+        vscode.commands.registerCommand('aware.copyEulaCommand', async () => {
+            const command = 'npx @microsoft/workiq accept-eula';
+            await vscode.env.clipboard.writeText(command);
+            vscode.window.showInformationMessage(
+                `Copied to clipboard: ${command}`,
+                'Open Terminal'
+            ).then(action => {
+                if (action === 'Open Terminal') {
+                    vscode.commands.executeCommand('workbench.action.terminal.new');
+                }
+            });
+        })
+    );
+
+    // DEBUG: Test document query command
+    context.subscriptions.push(
+        vscode.commands.registerCommand('aware.testDocumentQuery', async () => {
+            const repoName = 'copilot-sdk';
+            const question = `What documents are related to "${repoName}"? Return as JSON array with fields: title, url, type (e.g., "Word", "Excel", "PowerPoint", "PDF", "SharePoint", "Email", "Teams"). Limit to 15 most relevant.`;
             
-            // Give the server time to start, then refresh
-            setTimeout(async () => {
-                log('Refreshing after server start...');
-                await refreshMeetings();
-            }, 3000);
+            outputChannel.appendLine(`\n=== TEST QUERY ===`);
+            outputChannel.appendLine(`Query: ${question}`);
+            outputChannel.show();
+            
+            try {
+                const result = await vscode.lm.invokeTool(
+                    'mcp_workiq_ask_work_iq',
+                    { input: { question }, toolInvocationToken: undefined },
+                    new vscode.CancellationTokenSource().token
+                );
+                
+                let response = '';
+                for (const part of result.content) {
+                    if (part instanceof vscode.LanguageModelTextPart) {
+                        response += part.value;
+                    }
+                }
+                
+                outputChannel.appendLine(`\n=== RESPONSE ===`);
+                outputChannel.appendLine(response);
+                outputChannel.appendLine(`\n=== END ===`);
+            } catch (e) {
+                outputChannel.appendLine(`Error: ${e}`);
+            }
         })
     );
 }
@@ -243,7 +279,7 @@ async function refreshMeetings(): Promise<void> {
     log('Refreshing meetings...');
     try {
         await meetingService.fetchMeetings('today');
-        log(`Loaded ${meetingService.getCachedMeetings().length} meetings`);
+        log(`Loaded ${meetingService.getCachedMeetings().length} meetings for today`);
     } catch (error) {
         log(`Failed to refresh meetings: ${error}`);
     }
@@ -290,19 +326,6 @@ function formatTime(date: Date): string {
 
 function getMinutesUntil(date: Date): number {
     return Math.round((date.getTime() - Date.now()) / (1000 * 60));
-}
-
-/**
- * Updates the meetings tree view description with the current model name
- */
-async function updateModelDescription(): Promise<void> {
-    try {
-        const model = await modelSelector.getConfiguredModel();
-        const modelName = model?.name || model?.family || 'No model';
-        meetingsTreeView.description = `Using ${modelName}`;
-    } catch (error) {
-        log(`Failed to update model description: ${error}`);
-    }
 }
 
 /**

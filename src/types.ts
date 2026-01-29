@@ -48,6 +48,7 @@ export type WorkIQConnectionState =
     | 'license_required'    // M365 Copilot license issue
     | 'admin_consent'       // Organization admin consent needed
     | 'auth_required'       // User needs to authenticate
+    | 'eula_required'       // Work IQ EULA not accepted
     | 'unknown_error';      // Other error
 
 export interface WorkIQConnectionStatus {

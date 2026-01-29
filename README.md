@@ -55,14 +55,16 @@ npx @microsoft/workiq accept-eula
   - `/next` - See when your next meeting is
 
 - **Language Model Tools**: Copilot can use these tools to help you:
-  - `aware_getMeetings` - Get upcoming meetings for today, tomorrow, or the week
-  - `aware_getNextMeeting` - Get next meeting details
+  - `aware_getMeetings` - Get all meetings (including in-progress) for today, tomorrow, or the week
+  - `aware_getNextMeeting` - Get current meeting (if in progress) and next upcoming meeting details
 
 ### Sidebar Views
-- **Upcoming Meetings**: See all your meetings in a dedicated sidebar view, organized by time
-  - **Happening Now** - Meetings currently in progress
-  - **Starting Soon** - Meetings within the next 15 minutes
-  - **Later Today** - All other upcoming meetings
+- **Meetings**: A rich webview showing all your meetings with visual status indicators
+  - **Happening Now** - Meetings currently in progress with "Live" badge and red accent
+  - **Starting Soon** - Meetings within the next 15 minutes with orange accent
+  - **Later Today** - All other upcoming meetings for today
+  - **Tomorrow** - Preview of tomorrow's meetings
+  - Click any online meeting to join directly
 - **Related Documents**: See M365 documents related to your current workspace
 
 ## Requirements

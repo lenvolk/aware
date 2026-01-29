@@ -1,9 +1,27 @@
 /**
- * Document service that fetches related documents from Work IQ MCP server
+ * Document Service - Fetches related documents from Work IQ MCP server
+ * 
+ * ## Query Strategy
+ * Uses structured JSON prompt matching meetingService pattern:
+ * "What documents are related to {repoName}? Return as JSON array with fields: title, url, type"
+ * 
+ * ## Response Format (from Work IQ)
+ * Work IQ returns JSON in markdown code fences with footnotes containing real URLs:
+ * ```json
+ * [{"title": "Doc Name", "url": "[1]", "type": "Word"}]
+ * ```
+ * [1](https://actual-sharepoint-url.com/...)
+ * 
+ * ## Parsing
+ * 1. Extract JSON from code fences
+ * 2. Extract real URLs from footnotes [N](url)
+ * 3. Map footnote references to actual URLs
  */
 
 import * as vscode from 'vscode';
 import { RelatedDocument } from './types';
+
+const WORKIQ_TOOL_NAME = 'mcp_workiq_ask_work_iq';
 
 export class DocumentService {
     private documents: RelatedDocument[] = [];
@@ -34,26 +52,17 @@ export class DocumentService {
         this._onLoadingStarted.fire();
 
         try {
-            const query = this.buildDocumentQuery(repoName);
-            const response = await this.queryWorkIQ(query);
-
-            if (response.error) {
-                this.log(`Error from Work IQ: ${response.error}`);
-                return this.documents;
-            }
-
-            if (response.rawResponse) {
-                const parsed = this.parseDocumentResponse(response.rawResponse);
-                this.log(`Parsed ${parsed.length} documents from response`);
-                this.documents = parsed;
-                this.lastRefresh = new Date();
-                this._onDocumentsUpdated.fire(this.documents);
-            }
-
+            const response = await this.queryWorkIQ(repoName);
+            const parsed = this.parseDocumentResponse(response);
+            this.log(`Parsed ${parsed.length} documents from response`);
+            this.documents = parsed;
+            this.lastRefresh = new Date();
+            this._onDocumentsUpdated.fire(this.documents);
             return this.documents;
         } catch (error) {
             this.log(`Failed to fetch documents: ${error}`);
-            throw error;
+            this._onDocumentsUpdated.fire(this.documents);
+            return this.documents;
         }
     }
 
@@ -62,112 +71,110 @@ export class DocumentService {
         if (!workspaceFolders || workspaceFolders.length === 0) {
             return null;
         }
-
-        // Use the first workspace folder name as the repo name
         return workspaceFolders[0].name;
     }
 
-    private buildDocumentQuery(repoName: string): string {
-        return `What documents or files are related to the repository "${repoName}"? Return as JSON array with fields: title, url, lastModified (ISO 8601 if available), type (e.g., "Word", "Excel", "PowerPoint", "PDF", "OneNote", "Web Page"). Limit to the 10 most relevant documents.`;
-    }
+    private async queryWorkIQ(repoName: string): Promise<string> {
+        const workiqTool = vscode.lm.tools.find(t => t.name === WORKIQ_TOOL_NAME);
+        
+        if (!workiqTool) {
+            throw new Error('Work IQ MCP server not available. Please start the workiq server from MCP Servers panel.');
+        }
 
-    private async queryWorkIQ(question: string): Promise<{ error?: string; rawResponse?: string }> {
-        this.log(`Querying Work IQ: ${question}`);
-
-        try {
-            const workIQTool = vscode.lm.tools.find(tool => {
-                const name = tool.name.toLowerCase();
-                return name.includes('workiq') ||
-                    name.includes('work_iq') ||
-                    name.includes('ask_work_iq') ||
-                    name.includes('mcp_workiq');
-            });
-
-            if (!workIQTool) {
-                this.log('Work IQ tool not found');
-                return { error: 'Work IQ MCP server not available.' };
-            }
-
-            const cancellationTokenSource = new vscode.CancellationTokenSource();
-            const result = await vscode.lm.invokeTool(
-                workIQTool.name,
-                {
-                    input: { question },
-                    toolInvocationToken: undefined
-                },
-                cancellationTokenSource.token
-            );
-
-            let fullResponse = '';
+        // Structured prompt matching meetingService pattern
+        const question = `What documents are related to "${repoName}"? Return as JSON array with fields: title, url, type (e.g., "Word", "Excel", "PowerPoint", "PDF", "SharePoint", "Email", "Teams"). Limit to 15 most relevant.`;
+        
+        this.log(`Query: ${question}`);
+        
+        const result = await vscode.lm.invokeTool(
+            WORKIQ_TOOL_NAME,
+            { 
+                input: { question },
+                toolInvocationToken: undefined
+            },
+            new vscode.CancellationTokenSource().token
+        );
+        
+        let fullResponse = '';
+        if (result && result.content) {
             for (const part of result.content) {
                 if (part instanceof vscode.LanguageModelTextPart) {
                     fullResponse += part.value;
                 }
             }
-
-            this.log(`Work IQ response received (${fullResponse.length} chars)`);
-            return { rawResponse: fullResponse };
-        } catch (error) {
-            this.log(`Work IQ query error: ${error}`);
-            return { error: String(error) };
         }
+        
+        this.log(`Response (${fullResponse.length} chars):\n${fullResponse}`);
+        return fullResponse;
     }
 
     private parseDocumentResponse(response: string): RelatedDocument[] {
         const documents: RelatedDocument[] = [];
-
-        this.log(`Parsing document response (${response.length} chars)`);
-
-        // Extract real URLs from markdown footnotes: [1](https://...)
+        
+        // Extract real URLs from footnotes: [1](https://...)
         const realUrls: string[] = [];
         const footnoteMatches = response.matchAll(/\[(\d+)\]\((https?:\/\/[^)]+)\)/g);
         for (const match of footnoteMatches) {
-            const index = parseInt(match[1], 10) - 1;
-            realUrls[index] = match[2];
+            realUrls[parseInt(match[1], 10) - 1] = match[2];
         }
-        this.log(`Found ${realUrls.length} real URLs in footnotes`);
-
-        // Try to parse as JSON
+        this.log(`Found ${realUrls.filter(Boolean).length} URLs in footnotes`);
+        
+        // Parse JSON from response
         try {
-            // Remove markdown code fences if present
-            let jsonContent = response;
             const codeFenceMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
-            if (codeFenceMatch) {
-                jsonContent = codeFenceMatch[1].trim();
-            }
-
-            const jsonMatch = jsonContent.match(/\[[\s\S]*\]/);
+            const jsonContent = codeFenceMatch ? codeFenceMatch[1].trim() : response;
+            const jsonMatch = jsonContent.match(/\[[\s\S]*?\]/);
+            
             if (jsonMatch) {
                 const parsed = JSON.parse(jsonMatch[0]) as Array<{
                     title: string;
                     url: string;
-                    lastModified?: string;
-                    type: string;
+                    type?: string;
                 }>;
-
+                
                 for (let i = 0; i < parsed.length; i++) {
                     const item = parsed[i];
                     
                     // Use real URL from footnotes, falling back to JSON field
                     const url = realUrls[i] || item.url;
-
-                    const doc: RelatedDocument = {
+                    
+                    // Skip if no valid URL
+                    if (!url || !url.startsWith('http')) {
+                        this.log(`  Skipping "${item.title}" - no valid URL`);
+                        continue;
+                    }
+                    
+                    documents.push({
                         id: `doc-${i}-${Date.now()}`,
                         title: item.title,
                         url,
-                        lastModified: item.lastModified ? new Date(item.lastModified) : undefined,
-                        type: item.type || 'Document'
-                    };
-
-                    documents.push(doc);
-                    this.log(`  [${i + 1}] "${item.title}" | ${item.type} | ${url.substring(0, 50)}...`);
+                        type: item.type || this.inferDocumentType(url)
+                    });
+                    
+                    this.log(`  [${i + 1}] "${item.title}" (${item.type || 'inferred'}) - ${url.substring(0, 60)}...`);
                 }
+            } else {
+                this.log('No JSON array found in response');
             }
         } catch (e) {
-            this.log(`JSON parsing failed: ${e}`);
+            this.log(`JSON parse error: ${e}`);
         }
-
+        
         return documents;
+    }
+
+    private inferDocumentType(url: string): string {
+        const urlLower = url.toLowerCase();
+        if (urlLower.includes('.docx') || urlLower.includes('/word/')) return 'Word';
+        if (urlLower.includes('.xlsx') || urlLower.includes('/excel/')) return 'Excel';
+        if (urlLower.includes('.pptx') || urlLower.includes('/powerpoint/')) return 'PowerPoint';
+        if (urlLower.includes('.pdf')) return 'PDF';
+        if (urlLower.includes('onenote')) return 'OneNote';
+        if (urlLower.includes('teams.microsoft.com')) return 'Teams';
+        if (urlLower.includes('sharepoint.com')) return 'SharePoint';
+        if (urlLower.includes('onedrive')) return 'OneDrive';
+        if (urlLower.includes('github.com')) return 'GitHub';
+        return 'Document';
     }
 
     getCachedDocuments(): RelatedDocument[] {
@@ -183,8 +190,7 @@ export class DocumentService {
     }
 
     private log(message: string): void {
-        const timestamp = new Date().toISOString();
-        this.outputChannel.appendLine(`[${timestamp}] [DocumentService] ${message}`);
+        this.outputChannel.appendLine(`[${new Date().toISOString()}] [DocumentService] ${message}`);
     }
 
     dispose(): void {

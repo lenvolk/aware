@@ -27,7 +27,9 @@ Aware is a VS Code extension that integrates with Microsoft 365 via the Work IQ 
 
 5. **Document Service** (`src/documentService.ts`)
    - Queries Work IQ for documents related to current repo
-   - Parses document responses with real URLs from footnotes
+   - Uses simple query: `Show me all documents relevant to {repoName}`
+   - Parses markdown links `[Title](url)` from response
+   - Infers document type from URL patterns (SharePoint, Teams, OneDrive, etc.)
 
 6. **Chat Participant** (`src/chatParticipant.ts`)
    - Implements @aware chat participant

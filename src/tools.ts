@@ -76,31 +76,63 @@ class GetNextMeetingTool implements vscode.LanguageModelTool<Record<string, neve
         options: vscode.LanguageModelToolInvocationOptions<Record<string, never>>,
         token: vscode.CancellationToken
     ): Promise<vscode.LanguageModelToolResult> {
+        const currentMeeting = this.meetingService.getCurrentMeeting();
         const nextMeeting = this.meetingService.getNextMeeting();
         const minutesUntil = this.meetingService.getMinutesUntilNextMeeting();
 
-        if (!nextMeeting) {
-            return new vscode.LanguageModelToolResult([
-                new vscode.LanguageModelTextPart(JSON.stringify({
-                    hasNextMeeting: false,
-                    message: 'No upcoming meetings'
-                }))
-            ]);
+        // Build result with both current and next meeting info
+        const result: {
+            currentMeeting?: {
+                title: string;
+                startTime: string;
+                endTime: string;
+                duration: number;
+                isOnline: boolean;
+                hasJoinUrl: boolean;
+            };
+            hasNextMeeting: boolean;
+            meeting?: {
+                title: string;
+                startTime: string;
+                endTime: string;
+                duration: number;
+                isOnline: boolean;
+                hasJoinUrl: boolean;
+            };
+            minutesUntil?: number | null;
+            message?: string;
+        } = {
+            hasNextMeeting: !!nextMeeting
+        };
+
+        // Include current meeting if one is in progress
+        if (currentMeeting) {
+            result.currentMeeting = {
+                title: currentMeeting.title,
+                startTime: currentMeeting.startTime.toISOString(),
+                endTime: currentMeeting.endTime.toISOString(),
+                duration: currentMeeting.duration,
+                isOnline: currentMeeting.isOnline,
+                hasJoinUrl: !!currentMeeting.joinUrl
+            };
+        }
+
+        if (nextMeeting) {
+            result.meeting = {
+                title: nextMeeting.title,
+                startTime: nextMeeting.startTime.toISOString(),
+                endTime: nextMeeting.endTime.toISOString(),
+                duration: nextMeeting.duration,
+                isOnline: nextMeeting.isOnline,
+                hasJoinUrl: !!nextMeeting.joinUrl
+            };
+            result.minutesUntil = minutesUntil;
+        } else if (!currentMeeting) {
+            result.message = 'No upcoming meetings';
         }
 
         return new vscode.LanguageModelToolResult([
-            new vscode.LanguageModelTextPart(JSON.stringify({
-                hasNextMeeting: true,
-                meeting: {
-                    title: nextMeeting.title,
-                    startTime: nextMeeting.startTime.toISOString(),
-                    endTime: nextMeeting.endTime.toISOString(),
-                    duration: nextMeeting.duration,
-                    isOnline: nextMeeting.isOnline,
-                    hasJoinUrl: !!nextMeeting.joinUrl
-                },
-                minutesUntil
-            }, null, 2))
+            new vscode.LanguageModelTextPart(JSON.stringify(result, null, 2))
         ]);
     }
 
