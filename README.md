@@ -1,6 +1,8 @@
 # Aware
 
-AI-powered meeting awareness for VS Code that integrates with Microsoft 365 to help you stay on top of your schedule.
+AI-powered meeting and document awareness for VS Code that integrates with Microsoft 365 via the Work IQ MCP server to keep you in the loop.
+
+![Screenshot of aware in sidebar](./aware-screenshot.png)
 
 ## Prerequisites
 
@@ -128,9 +130,14 @@ This extension contributes the following settings:
 
 **Meetings not loading:**
 1. Verify your Microsoft 365 Copilot license is active
-2. Try running `npx @microsoft/workiq ask -q "What are my meetings today?"` in terminal to test
+2. Make sure that you are on a VPN if required for your org, etc.
+3. Try running `What are my meetings today"` in Copilot chat to test
 
 ## Release Notes
+
+### 0.0.2
+- Screenshot added to README
+- That's pretty much it
 
 ### 0.0.1
 
