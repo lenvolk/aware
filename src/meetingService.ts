@@ -12,6 +12,7 @@ export class MeetingService {
     private tomorrowMeetings: Meeting[] = [];
     private weekMeetings: Meeting[] = [];
     private lastRefresh: Date | null = null;
+    private lastError: string | null = null;
     private outputChannel: vscode.OutputChannel;
     
     private _onMeetingsUpdated = new vscode.EventEmitter<Meeting[]>();
@@ -40,6 +41,7 @@ export class MeetingService {
             } else {
                 this.meetings = parsedMeetings;
                 this.lastRefresh = new Date();
+                this.lastError = null; // Clear error on success
             }
             
             this._onMeetingsUpdated.fire(this.meetings);
@@ -47,10 +49,33 @@ export class MeetingService {
             
             return parsedMeetings;
         } catch (error) {
-            this.log(`Failed to fetch meetings: ${error}`);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            this.log(`Failed to fetch meetings: ${errorMessage}`);
+            
+            // Set error state for today's meetings
+            if (timeRange === 'today') {
+                this.lastError = this.formatErrorMessage(errorMessage);
+            }
+            
             this._onMeetingsUpdated.fire(this.meetings);
             return this.meetings;
         }
+    }
+
+    private formatErrorMessage(error: string): string {
+        if (error.includes('not available') || error.includes('not found')) {
+            return 'Work IQ MCP server is not running. Start it from the MCP Servers panel.';
+        }
+        if (error.includes('timeout') || error.includes('ETIMEDOUT')) {
+            return 'Connection timed out. Check your network or VPN connection.';
+        }
+        if (error.includes('network') || error.includes('ENOTFOUND') || error.includes('ECONNREFUSED')) {
+            return 'Network error. Check your internet or VPN connection.';
+        }
+        if (error.includes('unauthorized') || error.includes('401') || error.includes('403')) {
+            return 'Authentication failed. You may need to sign in again.';
+        }
+        return 'Failed to connect to Work IQ. Check your network connection.';
     }
 
     private async queryWorkIQ(timeRange: TimeRange): Promise<string> {
@@ -212,6 +237,10 @@ export class MeetingService {
 
     getLastRefresh(): Date | null {
         return this.lastRefresh;
+    }
+
+    getLastError(): string | null {
+        return this.lastError;
     }
 
     private log(message: string): void {

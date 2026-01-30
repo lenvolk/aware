@@ -52,6 +52,9 @@ export class MeetingsWebviewProvider implements vscode.WebviewViewProvider {
                 case 'startServer':
                     await vscode.commands.executeCommand('workbench.mcp.listServers');
                     break;
+                case 'refresh':
+                    await vscode.commands.executeCommand('aware.refreshMeetings');
+                    break;
             }
         });
 
@@ -72,6 +75,7 @@ export class MeetingsWebviewProvider implements vscode.WebviewViewProvider {
             const meetings = this.meetingService.getCachedMeetings();
             const lastRefresh = this.meetingService.getLastRefresh();
             const isAvailable = this.meetingService.isWorkIQAvailable();
+            const lastError = this.meetingService.getLastError();
 
             this._view.webview.postMessage({
                 type: 'update',
@@ -87,7 +91,8 @@ export class MeetingsWebviewProvider implements vscode.WebviewViewProvider {
                 })),
                 isLoading,
                 isAvailable,
-                lastRefresh: lastRefresh?.toISOString()
+                lastRefresh: lastRefresh?.toISOString(),
+                errorMessage: lastError
             });
         }
 
@@ -381,6 +386,41 @@ export class MeetingsWebviewProvider implements vscode.WebviewViewProvider {
             background: var(--vscode-button-hoverBackground);
         }
         
+        /* Error state */
+        .error-state {
+            background: var(--vscode-inputValidation-errorBackground, rgba(255, 85, 85, 0.1));
+            border: 1px solid var(--vscode-inputValidation-errorBorder, #f14c4c);
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        
+        .error-state h3 {
+            font-size: 13px;
+            margin-bottom: 8px;
+            color: var(--vscode-errorForeground, #f14c4c);
+        }
+        
+        .error-state p {
+            font-size: 12px;
+            margin-bottom: 12px;
+            opacity: 0.9;
+        }
+        
+        .retry-btn {
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .retry-btn:hover {
+            background: var(--vscode-button-hoverBackground);
+        }
+        
         /* Loading */
         .loading {
             display: flex;
@@ -449,6 +489,17 @@ export class MeetingsWebviewProvider implements vscode.WebviewViewProvider {
                         <h3>⚠️ Work IQ Not Running</h3>
                         <p>Start the Work IQ MCP server to see your meetings.</p>
                         <button class="start-server-btn" onclick="startServer()">Open MCP Servers</button>
+                    </div>
+                \`;
+            }
+            
+            // Error state (connection issues, VPN, etc.)
+            if (data.errorMessage && data.isAvailable) {
+                html += \`
+                    <div class="error-state">
+                        <h3>⚠️ Connection Issue</h3>
+                        <p>\${escapeHtml(data.errorMessage)}</p>
+                        <button class="retry-btn" onclick="refresh()">Retry</button>
                     </div>
                 \`;
             }
@@ -528,6 +579,10 @@ export class MeetingsWebviewProvider implements vscode.WebviewViewProvider {
         
         function startServer() {
             vscode.postMessage({ command: 'startServer' });
+        }
+        
+        function refresh() {
+            vscode.postMessage({ command: 'refresh' });
         }
         
         window.addEventListener('message', event => {

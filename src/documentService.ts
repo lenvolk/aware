@@ -26,6 +26,7 @@ const WORKIQ_TOOL_NAME = 'mcp_workiq_ask_work_iq';
 export class DocumentService {
     private documents: RelatedDocument[] = [];
     private lastRefresh: Date | null = null;
+    private lastError: string | null = null;
     private currentRepoName: string | null = null;
     private outputChannel: vscode.OutputChannel;
     private _onDocumentsUpdated = new vscode.EventEmitter<RelatedDocument[]>();
@@ -57,13 +58,32 @@ export class DocumentService {
             this.log(`Parsed ${parsed.length} documents from response`);
             this.documents = parsed;
             this.lastRefresh = new Date();
+            this.lastError = null; // Clear error on success
             this._onDocumentsUpdated.fire(this.documents);
             return this.documents;
         } catch (error) {
-            this.log(`Failed to fetch documents: ${error}`);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            this.log(`Failed to fetch documents: ${errorMessage}`);
+            this.lastError = this.formatErrorMessage(errorMessage);
             this._onDocumentsUpdated.fire(this.documents);
             return this.documents;
         }
+    }
+
+    private formatErrorMessage(error: string): string {
+        if (error.includes('not available') || error.includes('not found')) {
+            return 'Work IQ MCP server is not running. Start it from the MCP Servers panel.';
+        }
+        if (error.includes('timeout') || error.includes('ETIMEDOUT')) {
+            return 'Connection timed out. Check your network or VPN connection.';
+        }
+        if (error.includes('network') || error.includes('ENOTFOUND') || error.includes('ECONNREFUSED')) {
+            return 'Network error. Check your internet or VPN connection.';
+        }
+        if (error.includes('unauthorized') || error.includes('401') || error.includes('403')) {
+            return 'Authentication failed. You may need to sign in again.';
+        }
+        return 'Failed to connect to Work IQ. Check your network connection.';
     }
 
     private getCurrentRepoName(): string | null {
@@ -187,6 +207,10 @@ export class DocumentService {
 
     getLastRefresh(): Date | null {
         return this.lastRefresh;
+    }
+
+    getLastError(): string | null {
+        return this.lastError;
     }
 
     private log(message: string): void {

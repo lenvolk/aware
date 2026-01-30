@@ -175,3 +175,11 @@ npm run lint       # Lint code
 - Chat participant requires GitHub Copilot extension
 - Language model tools require `name`, `displayName`, `description`, `modelDescription`, and `toolReferenceName` when `canBeReferencedInPrompt` is true
 - **No `console.log` in production code** - Debug statements should be removed before publishing
+
+## Ship It
+
+If I ever tell you to ship it, that means I want you to...
+
+1. Increment the version in package.json (e.g., 1.0.0 to 1.0.1 for patch, 1.0.0 to 1.1.0 for minor, 1.0.0 to 2.0.0 for major)
+2. Update the README.md with any new features or changes
+3. Push to the extension marketplace using `vsce publish`

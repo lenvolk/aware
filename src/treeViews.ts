@@ -7,7 +7,7 @@ import { RelatedDocument } from './types';
 import { DocumentService } from './documentService';
 
 // Related Documents Tree View
-type DocumentTreeElement = DocumentTreeItem | NoRepoItem;
+type DocumentTreeElement = DocumentTreeItem | NoRepoItem | ErrorItem;
 
 export class DocumentsTreeDataProvider implements vscode.TreeDataProvider<DocumentTreeElement> {
     private _onDidChangeTreeData = new vscode.EventEmitter<DocumentTreeElement | undefined | void>();
@@ -39,6 +39,12 @@ export class DocumentsTreeDataProvider implements vscode.TreeDataProvider<Docume
             return Promise.resolve([new DocumentTreeItem(null, 'loading')]);
         }
 
+        // Check for error state first
+        const lastError = this.documentService.getLastError();
+        if (lastError) {
+            return Promise.resolve([new ErrorItem(lastError)]);
+        }
+
         const repoName = this.documentService.getCurrentRepoNameCached();
         if (!repoName) {
             return Promise.resolve([new NoRepoItem()]);
@@ -52,6 +58,19 @@ export class DocumentsTreeDataProvider implements vscode.TreeDataProvider<Docume
         return Promise.resolve(
             documents.map(doc => new DocumentTreeItem(doc, 'document'))
         );
+    }
+}
+
+export class ErrorItem extends vscode.TreeItem {
+    constructor(errorMessage: string) {
+        super('Connection Issue', vscode.TreeItemCollapsibleState.None);
+        this.iconPath = new vscode.ThemeIcon('warning', new vscode.ThemeColor('errorForeground'));
+        this.description = 'Click to retry';
+        this.tooltip = errorMessage;
+        this.command = {
+            command: 'aware.refreshDocuments',
+            title: 'Retry'
+        };
     }
 }
 
