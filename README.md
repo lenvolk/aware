@@ -13,6 +13,12 @@ This extension requires:
 3. **Work IQ MCP Server** - Must be configured in VS Code (see setup below)
 4. **Admin Consent** - Your organization's admin must grant consent for Work IQ ([Admin Guide](https://github.com/microsoft/work-iq-mcp/blob/main/ADMIN-INSTRUCTIONS.md))
 
+### Developer / Packaging Prerequisites
+
+- Node.js and npm installed
+- `vsce` (recommended use via `npx vsce` or install globally with `npm i -g @vscode/vsce`)
+- A working TypeScript toolchain (installed via `npm install` in this repo)
+
 ### Work IQ MCP Server Setup
 
 The extension uses [Microsoft Work IQ](https://github.com/microsoft/work-iq-mcp) to access your Microsoft 365 calendar data.
@@ -42,6 +48,60 @@ npx @microsoft/workiq accept-eula
 ```
 
 > **Note:** Work IQ is in Public Preview. Features and APIs may change.
+
+## Building and Packaging (repeatable steps)
+
+Follow these steps to build, package, and install the extension locally. Use `npx vsce` if you prefer not to install `vsce` globally.
+
+1. Install dependencies
+
+```bash
+npm install
+```
+
+2. Compile TypeScript (there is no `build` script — use `compile`)
+
+```bash
+npm run compile
+# or for development with incremental rebuilds:
+npm run watch
+```
+
+3. Package the extension (recommended: use `npx` to avoid a global install)
+
+```bash
+npx vsce package
+# or, if you installed vsce globally:
+# vsce package
+```
+
+This produces `aware-<version>.vsix` in the repository root.
+
+4. Install the packaged extension into VS Code
+
+```bash
+code --install-extension aware-0.0.2.vsix
+```
+
+Troubleshooting tips
+- If `vsce` reports a missing dependency (for example `missing: @vscode/codicons@^0.0.44`), run `npm install` in the repository root to ensure `node_modules` is present. If the dependency is absent from `package.json`, add it with:
+
+```bash
+npm install @vscode/codicons@^0.0.44 --save
+```
+
+- If you tried `npm run build` and saw `Missing script: "build"`, use `npm run compile` as shown above.
+- Prefer `npx vsce package` to avoid managing a global `vsce` install.
+
+Example full flow
+
+```bash
+npm install
+npm run compile
+npx vsce package
+code --install-extension aware-0.0.2.vsix
+```
+
 
 ## Features
 
